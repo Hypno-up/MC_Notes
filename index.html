@@ -1207,21 +1207,16 @@
             orderBy
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase config - will be injected by Netlify
-        let firebaseConfig;
-        try {
-            firebaseConfig = JSON.parse(__firebase_config);
-        } catch (e) {
-            // Fallback config for development
-            firebaseConfig = {
-                apiKey: "YOUR_API_KEY",
-                authDomain: "YOUR_PROJECT.firebaseapp.com",
-                projectId: "YOUR_PROJECT_ID",
-                storageBucket: "YOUR_PROJECT.appspot.com",
-                messagingSenderId: "YOUR_SENDER_ID",
-                appId: "YOUR_APP_ID"
-            };
-        }
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCffPMQ1sVISIUDjYr2-cQ6MK3zEqMr2LE",
+            authDomain: "mcnote-2d33b.firebaseapp.com",
+            projectId: "mcnote-2d33b",
+            storageBucket: "mcnote-2d33b.firebasestorage.app",
+            messagingSenderId: "730995541743",
+            appId: "1:730995541743:web:ae91b54d0e6253f0803d1a",
+            measurementId: "G-265RW13Y79"
+        };
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
