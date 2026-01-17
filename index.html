@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MCNote V2 - Gestionnaire d'Événements</title>
+    <title>MCNote V3 - Événements & Bloc-notes</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
@@ -18,6 +18,8 @@
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
+            --notes-color: #ec4899;
+            --notes-secondary: #f472b6;
         }
 
         * {
@@ -110,7 +112,6 @@
         .auth-input:focus {
             outline: none;
             border-color: var(--accent-primary);
-            background: rgba(255,255,255,0.08);
         }
 
         .auth-input::placeholder {
@@ -131,18 +132,11 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: all 0.2s;
-        }
-
-        .auth-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
         }
 
         .auth-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
         }
 
         .auth-switch {
@@ -210,7 +204,50 @@
             padding: 8px 12px;
             border-radius: 8px;
             cursor: pointer;
+        }
+
+        /* ==================== MODE TABS ==================== */
+        .mode-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.05);
+            padding: 5px;
+            border-radius: 12px;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            border-radius: 10px;
+            cursor: pointer;
             font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .mode-tab.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .mode-tab.notes-tab.active {
+            background: var(--notes-color);
+        }
+
+        .mode-content {
+            display: none;
+        }
+
+        .mode-content.active {
+            display: block;
         }
 
         .section-title {
@@ -222,14 +259,15 @@
             margin-bottom: 15px;
         }
 
-        .events-grid {
+        /* ==================== EVENTS GRID ==================== */
+        .events-grid, .notebooks-grid {
             display: flex;
             flex-direction: column;
             gap: 10px;
             margin-bottom: 25px;
         }
 
-        .event-card {
+        .event-card, .notebook-card {
             background: var(--bg-card);
             border: 1px solid rgba(99, 102, 241, 0.2);
             border-radius: 12px;
@@ -241,18 +279,21 @@
             justify-content: space-between;
         }
 
-        .event-card:active {
-            background: rgba(99, 102, 241, 0.2);
+        .event-card:active, .notebook-card:active {
             transform: scale(0.98);
         }
 
-        .event-card-info {
+        .notebook-card {
+            border-color: rgba(236, 72, 153, 0.3);
+        }
+
+        .event-card-info, .notebook-card-info {
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
-        .event-card-icon {
+        .event-card-icon, .notebook-card-icon {
             width: 40px;
             height: 40px;
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
@@ -262,32 +303,49 @@
             justify-content: center;
         }
 
-        .event-card-icon i {
+        .notebook-card-icon {
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+        }
+
+        .event-card-icon i, .notebook-card-icon i {
             color: white;
         }
 
-        .event-card-name {
+        .event-card-name, .notebook-card-name {
             font-weight: 600;
             font-size: 1rem;
         }
 
-        .event-card-meta {
+        .event-card-meta, .notebook-card-meta {
             color: var(--text-secondary);
             font-size: 0.8rem;
         }
 
-        .event-card-actions {
+        .event-card-actions, .notebook-card-actions {
             display: flex;
             gap: 8px;
         }
 
-        .event-delete-btn {
+        .event-delete-btn, .notebook-delete-btn {
             background: rgba(239, 68, 68, 0.1);
             border: none;
             color: #f87171;
             padding: 8px 10px;
             border-radius: 8px;
             cursor: pointer;
+        }
+
+        .event-refresh-btn {
+            background: rgba(66, 133, 244, 0.2);
+            border: none;
+            color: #4285f4;
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .event-refresh-btn:active {
+            transform: scale(0.95);
         }
 
         .create-event-card {
@@ -297,10 +355,14 @@
             font-weight: 600;
         }
 
-        .create-event-card:active {
-            background: linear-gradient(135deg, #5457d6, #7c3aed);
+        .create-notebook-card {
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+            border: none;
+            color: white;
+            font-weight: 600;
         }
 
+        /* ==================== IMPORT SECTION ==================== */
         .import-section {
             background: var(--bg-card);
             border-radius: 16px;
@@ -326,7 +388,6 @@
             border-radius: 8px;
             cursor: pointer;
             font-size: 0.85rem;
-            transition: all 0.2s;
         }
 
         .import-tab.active {
@@ -388,7 +449,7 @@
             position: relative;
         }
 
-        /* ==================== BARRE DE PROGRESSION LATÉRALE ==================== */
+        /* Progress Sidebar */
         .progress-sidebar {
             position: absolute;
             left: 0;
@@ -423,11 +484,6 @@
             cursor: pointer;
             transition: all 0.2s;
             flex-shrink: 0;
-            position: relative;
-        }
-
-        .progress-item:active {
-            transform: scale(1.1);
         }
 
         .progress-item.current {
@@ -439,12 +495,6 @@
             background: var(--success);
         }
 
-        .progress-item.validated.current {
-            background: var(--success);
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
-        }
-
-        /* Tooltip titre séquence */
         .progress-tooltip {
             position: fixed;
             left: 45px;
@@ -457,25 +507,14 @@
             z-index: 100;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             pointer-events: none;
-            animation: tooltipFadeIn 0.15s ease;
         }
 
         .progress-tooltip .tooltip-time {
             color: var(--accent-secondary);
             font-weight: 600;
-            font-size: 0.8rem;
         }
 
-        .progress-tooltip .tooltip-title {
-            margin-top: 3px;
-        }
-
-        @keyframes tooltipFadeIn {
-            from { opacity: 0; transform: translateX(-5px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        /* Previous Sequence Header */
+        /* Navigation Bars */
         .prev-sequence-bar {
             flex-shrink: 0;
             background: rgba(30, 30, 50, 0.95);
@@ -544,7 +583,6 @@
             color: var(--accent-primary);
         }
 
-        /* Séquence validée */
         .sequence-validated .sequence-time {
             color: var(--success);
         }
@@ -566,7 +604,6 @@
             margin-top: 3px;
         }
 
-        /* Content Area */
         .sequence-content {
             flex: 1;
             background: var(--bg-card);
@@ -575,7 +612,6 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            position: relative;
             transition: all 0.3s;
         }
 
@@ -623,10 +659,6 @@
             border-color: var(--accent-primary);
         }
 
-        .quick-note-input::placeholder {
-            color: var(--text-secondary);
-        }
-
         /* Action Buttons */
         .content-actions {
             flex-shrink: 0;
@@ -647,11 +679,6 @@
             display: flex;
             align-items: center;
             gap: 4px;
-            transition: all 0.2s;
-        }
-
-        .action-icon-btn:active {
-            background: var(--accent-primary);
         }
 
         .action-icon-btn.prompter-btn {
@@ -663,16 +690,12 @@
             color: #000;
         }
 
-        .action-icon-btn.edit-btn {
-            background: rgba(99, 102, 241, 0.3);
-        }
-
         .action-icon-btn:disabled {
             opacity: 0.4;
             cursor: not-allowed;
         }
 
-        /* Bouton de validation */
+        /* Validate Button */
         .validate-section {
             flex-shrink: 0;
             margin-top: 10px;
@@ -690,13 +713,8 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: all 0.2s;
             background: var(--success);
             color: white;
-        }
-
-        .validate-btn:active {
-            transform: scale(0.98);
         }
 
         .validate-btn.validated {
@@ -705,11 +723,7 @@
             border: 2px solid var(--success);
         }
 
-        .validate-btn.validated i {
-            color: var(--success);
-        }
-
-        /* Next Sequence Footer */
+        /* Next Sequence Bar */
         .next-sequence-bar {
             flex-shrink: 0;
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
@@ -721,10 +735,6 @@
             gap: 12px;
             cursor: pointer;
             min-height: 65px;
-        }
-
-        .next-sequence-bar:active {
-            filter: brightness(1.1);
         }
 
         .next-sequence-bar.disabled {
@@ -740,7 +750,6 @@
             font-size: 0.65rem;
             opacity: 0.8;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
         .next-sequence-info .title {
@@ -753,7 +762,246 @@
             opacity: 0.9;
         }
 
-        /* ==================== POPUP MODAL ==================== */
+        /* ==================== NOTEBOOK VIEW PAGE ==================== */
+        #notebookPage {
+            display: none;
+            height: 100vh;
+            height: 100dvh;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .notebook-header {
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .notebook-header h2 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .notebook-back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .notebook-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .notes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .note-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(236, 72, 153, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .note-card:active {
+            background: rgba(236, 72, 153, 0.2);
+        }
+
+        .note-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .note-card-title i {
+            color: var(--notes-color);
+        }
+
+        .note-card-preview {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .note-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .note-action-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .note-action-btn.prompter {
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+        }
+
+        .note-action-btn.delete {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .add-note-card {
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+            border: none;
+            color: white;
+            text-align: center;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+        }
+
+        /* ==================== NOTE VIEW PAGE ==================== */
+        #noteViewPage {
+            display: none;
+            height: 100vh;
+            height: 100dvh;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .note-view-header {
+            flex-shrink: 0;
+            background: var(--bg-card);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .note-view-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--notes-color);
+        }
+
+        .note-view-back {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: var(--text-primary);
+            padding: 10px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .note-view-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        .note-view-footer {
+            flex-shrink: 0;
+            padding: 15px;
+            background: var(--bg-card);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        .note-view-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .note-view-btn.edit {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-primary);
+        }
+
+        .note-view-btn.prompter {
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+            color: white;
+        }
+
+        /* Note navigation */
+        .note-nav {
+            display: flex;
+            gap: 10px;
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .note-nav-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 10px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .note-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .note-nav-btn.active {
+            background: var(--notes-color);
+        }
+
+        .note-counter {
+            background: var(--notes-color);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        /* ==================== POPUP & PROMPTER ==================== */
         .popup-overlay {
             display: none;
             position: fixed;
@@ -831,7 +1079,7 @@
             color: white;
         }
 
-        /* ==================== PROMPTER ==================== */
+        /* Prompter */
         .prompter-overlay {
             display: none;
             position: fixed;
@@ -872,10 +1120,6 @@
             font-size: 1rem;
         }
 
-        .prompter-control-btn.active {
-            background: var(--accent-primary);
-        }
-
         .prompter-control-btn.close {
             background: var(--danger);
         }
@@ -913,7 +1157,6 @@
             top: 50%;
             transform: translateY(-50%);
             color: var(--accent-primary);
-            font-size: 1rem;
         }
 
         .prompter-text-container {
@@ -923,7 +1166,6 @@
             right: 0;
             padding: 20px;
             padding-top: calc(30% + 40px);
-            transition: transform linear;
         }
 
         .prompter-text {
@@ -939,7 +1181,7 @@
         .prompter-text.size-lg { font-size: 2.4rem; }
         .prompter-text.size-xl { font-size: 3rem; }
 
-        /* ==================== CREATE EVENT MODAL ==================== */
+        /* ==================== MODALS ==================== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -979,6 +1221,10 @@
             font-size: 1.2rem;
         }
 
+        .modal-header.notes-modal h2 {
+            color: var(--notes-color);
+        }
+
         .modal-close {
             background: none;
             border: none;
@@ -1013,6 +1259,11 @@
             font-size: 1rem;
         }
 
+        .form-group textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
         .form-group input:focus,
         .form-group textarea:focus {
             outline: none;
@@ -1045,23 +1296,9 @@
             color: white;
         }
 
-        /* ==================== EDIT MODE ==================== */
-        .edit-mode-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: var(--warning);
-            color: #000;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            z-index: 100;
-            display: none;
-        }
-
-        .edit-mode-active .edit-mode-indicator {
-            display: block;
+        .modal-btn.save-notes {
+            background: linear-gradient(135deg, var(--notes-color), var(--notes-secondary));
+            color: white;
         }
 
         /* Toast */
@@ -1098,10 +1335,8 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Utilities */
         .hidden { display: none !important; }
 
-        /* Bloquer le scroll quand le prompteur est actif */
         body.prompter-active {
             overflow: hidden;
             position: fixed;
@@ -1112,11 +1347,6 @@
     </style>
 </head>
 <body>
-    <!-- Edit Mode Indicator -->
-    <div class="edit-mode-indicator">
-        <i class="fas fa-edit"></i> Mode Édition
-    </div>
-
     <!-- ==================== AUTH PAGE ==================== -->
     <div id="authPage">
         <div class="auth-card">
@@ -1124,11 +1354,10 @@
                 <div class="auth-logo">
                     <i class="fas fa-microphone-alt"></i>
                 </div>
-                <h1>MCNote V2</h1>
-                <p>Gestionnaire d'événements professionnel</p>
+                <h1>MCNote V3</h1>
+                <p>Événements & Bloc-notes</p>
             </div>
 
-            <!-- Login Form -->
             <div id="loginForm" class="auth-form">
                 <input type="email" id="loginEmail" class="auth-input" placeholder="Adresse e-mail">
                 <input type="password" id="loginPassword" class="auth-input" placeholder="Mot de passe">
@@ -1140,7 +1369,6 @@
                 </div>
             </div>
 
-            <!-- Signup Form -->
             <div id="signupForm" class="auth-form hidden">
                 <input type="email" id="signupEmail" class="auth-input" placeholder="Adresse e-mail">
                 <input type="password" id="signupPassword" class="auth-input" placeholder="Mot de passe">
@@ -1168,50 +1396,75 @@
             </div>
         </div>
 
-        <!-- Events Section -->
-        <div class="section-title">
-            <i class="fas fa-calendar-alt"></i> Mes Événements
+        <!-- Mode Tabs -->
+        <div class="mode-tabs">
+            <button class="mode-tab active" data-mode="events">
+                <i class="fas fa-calendar-alt"></i> Événements
+            </button>
+            <button class="mode-tab notes-tab" data-mode="notes">
+                <i class="fas fa-sticky-note"></i> Bloc-notes
+            </button>
         </div>
-        <div class="events-grid" id="eventsGrid">
-            <!-- Events will be loaded here -->
+
+        <!-- Events Mode -->
+        <div class="mode-content active" id="eventsMode">
+            <div class="section-title">
+                <i class="fas fa-calendar-check"></i> Mes Événements
+            </div>
+            <div class="events-grid" id="eventsGrid"></div>
+
+            <div class="import-section">
+                <div class="section-title" style="margin-bottom:15px;">
+                    <i class="fas fa-file-import"></i> Importer
+                </div>
+                <div class="import-tabs">
+                    <button class="import-tab active" data-tab="csv">CSV</button>
+                    <button class="import-tab" data-tab="gsheet">Google Sheets</button>
+                    <button class="import-tab" data-tab="airtable">Airtable</button>
+                </div>
+                <div class="import-content active" id="importCsv">
+                    <input type="text" class="import-input" id="csvEventName" placeholder="Nom de l'événement">
+                    <input type="file" class="import-input" id="csvFile" accept=".csv">
+                    <button class="import-btn" id="importCSVBtn">
+                        <i class="fas fa-upload"></i> Importer CSV
+                    </button>
+                </div>
+                <div class="import-content" id="importGsheet">
+                    <input type="text" class="import-input" id="gsheetEventName" placeholder="Nom de l'événement">
+                    <input type="text" class="import-input" id="gsheetUrl" placeholder="URL Google Sheets (publiée en CSV)">
+                    <div class="gsheet-help">
+                        <small style="color: var(--text-secondary); display: block; margin-bottom: 10px;">
+                            📋 Comment obtenir l'URL :<br>
+                            1. Google Sheets → Fichier → Partager → Publier sur le web<br>
+                            2. Choisir "Valeurs séparées par des virgules (.csv)"<br>
+                            3. Copier le lien généré
+                        </small>
+                    </div>
+                    <button class="import-btn" id="importGsheetBtn" style="background: #4285f4;">
+                        <i class="fab fa-google-drive"></i> Importer depuis Google Sheets
+                    </button>
+                </div>
+                <div class="import-content" id="importAirtable">
+                    <input type="text" class="import-input" id="airtableEventName" placeholder="Nom de l'événement">
+                    <button class="import-btn" id="importAirtableBtn">
+                        <i class="fas fa-database"></i> Importer depuis Airtable
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <!-- Import Section -->
-        <div class="import-section">
-            <div class="section-title" style="margin-bottom:15px;">
-                <i class="fas fa-file-import"></i> Importer
+        <!-- Notes Mode -->
+        <div class="mode-content" id="notesMode">
+            <div class="section-title">
+                <i class="fas fa-sticky-note"></i> Mes Bloc-notes
             </div>
-            
-            <div class="import-tabs">
-                <button class="import-tab active" data-tab="csv">CSV</button>
-                <button class="import-tab" data-tab="airtable">Airtable</button>
-            </div>
-
-            <!-- CSV Import -->
-            <div class="import-content active" id="importCSV">
-                <input type="text" class="import-input" id="csvEventName" placeholder="Nom de l'événement">
-                <input type="file" class="import-input" id="csvFile" accept=".csv">
-                <button class="import-btn" id="importCSVBtn">
-                    <i class="fas fa-upload"></i> Importer CSV
-                </button>
-            </div>
-
-            <!-- Airtable Import -->
-            <div class="import-content" id="importAirtable">
-                <input type="text" class="import-input" id="airtableEventName" placeholder="Nom de l'événement">
-                <button class="import-btn" id="importAirtableBtn">
-                    <i class="fas fa-database"></i> Importer depuis Airtable
-                </button>
-            </div>
+            <div class="notebooks-grid" id="notebooksGrid"></div>
         </div>
     </div>
 
     <!-- ==================== SEQUENCE VIEW PAGE ==================== -->
     <div id="sequencePage">
-        <!-- Barre de progression latérale -->
-        <div class="progress-sidebar" id="progressSidebar">
-            <!-- Généré dynamiquement -->
-        </div>
+        <div class="progress-sidebar" id="progressSidebar"></div>
 
         <div class="prev-sequence-bar" onclick="goToPrevious()">
             <div class="prev-sequence-info" id="prevSequenceInfo">
@@ -1235,15 +1488,11 @@
                 <div class="content-text" id="contentText"></div>
 
                 <div class="quick-note-section">
-                    <textarea 
-                        class="quick-note-input" 
-                        id="quickNoteInput"
-                        placeholder="📝 Note rapide..."
-                    ></textarea>
+                    <textarea class="quick-note-input" id="quickNoteInput" placeholder="📝 Note rapide..."></textarea>
                 </div>
 
                 <div class="content-actions">
-                    <button class="action-icon-btn edit-btn" onclick="toggleEditMode()">
+                    <button class="action-icon-btn" onclick="toggleEditMode()">
                         <i class="fas fa-edit"></i> Éditer
                     </button>
                     <button class="action-icon-btn expand-btn" id="expandBtn" onclick="openPopup()">
@@ -1254,7 +1503,6 @@
                     </button>
                 </div>
 
-                <!-- Bouton Validation -->
                 <div class="validate-section">
                     <button class="validate-btn" id="validateBtn" onclick="toggleValidation()">
                         <i class="fas fa-check-circle"></i> <span>Valider la séquence</span>
@@ -1274,10 +1522,53 @@
         </div>
     </div>
 
-    <!-- Tooltip pour barre de progression -->
+    <!-- Tooltip -->
     <div class="progress-tooltip" id="progressTooltip" style="display:none;">
         <div class="tooltip-time"></div>
         <div class="tooltip-title"></div>
+    </div>
+
+    <!-- ==================== NOTEBOOK VIEW PAGE ==================== -->
+    <div id="notebookPage">
+        <div class="notebook-header">
+            <button class="notebook-back-btn" onclick="closeNotebook()">
+                <i class="fas fa-arrow-left"></i> Retour
+            </button>
+            <h2><i class="fas fa-book"></i> <span id="notebookTitle">Bloc-notes</span></h2>
+            <div style="width:80px"></div>
+        </div>
+        <div class="notebook-content">
+            <div class="notes-list" id="notesList"></div>
+        </div>
+    </div>
+
+    <!-- ==================== NOTE VIEW PAGE ==================== -->
+    <div id="noteViewPage">
+        <div class="note-view-header">
+            <button class="note-view-back" onclick="closeNoteView()">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="note-view-title" id="noteViewTitle">Note</div>
+            <div style="width:50px"></div>
+        </div>
+        <div class="note-nav">
+            <button class="note-nav-btn" onclick="prevNote()" id="prevNoteBtn">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="note-counter" id="noteCounter">1 / 1</div>
+            <button class="note-nav-btn" onclick="nextNote()" id="nextNoteBtn">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        <div class="note-view-content" id="noteViewContent"></div>
+        <div class="note-view-footer">
+            <button class="note-view-btn edit" onclick="editCurrentNote()">
+                <i class="fas fa-edit"></i> Éditer
+            </button>
+            <button class="note-view-btn prompter" onclick="startNotePrompter()">
+                <i class="fas fa-scroll"></i> Prompteur
+            </button>
+        </div>
     </div>
 
     <!-- ==================== POPUP ==================== -->
@@ -1293,7 +1584,7 @@
             <button class="popup-btn close-btn" onclick="closePopup()">
                 <i class="fas fa-arrow-left"></i> Retour
             </button>
-            <button class="popup-btn prompter-btn" id="popupPrompterBtn" onclick="startPrompterFromPopup()">
+            <button class="popup-btn prompter-btn" onclick="startPrompterFromPopup()">
                 <i class="fas fa-scroll"></i> Prompteur
             </button>
         </div>
@@ -1348,9 +1639,56 @@
         </div>
     </div>
 
+    <!-- ==================== CREATE NOTEBOOK MODAL ==================== -->
+    <div class="modal-overlay" id="createNotebookModal">
+        <div class="modal-content">
+            <div class="modal-header notes-modal">
+                <h2><i class="fas fa-book"></i> Nouveau Bloc-notes</h2>
+                <button class="modal-close" onclick="closeCreateNotebookModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Thématique *</label>
+                    <input type="text" id="newNotebookName" placeholder="Ex: Anecdotes, Blagues, Citations...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closeCreateNotebookModal()">Annuler</button>
+                <button class="modal-btn save-notes" onclick="createNotebook()">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== CREATE/EDIT NOTE MODAL ==================== -->
+    <div class="modal-overlay" id="noteModal">
+        <div class="modal-content">
+            <div class="modal-header notes-modal">
+                <h2><i class="fas fa-sticky-note"></i> <span id="noteModalTitle">Nouvelle Note</span></h2>
+                <button class="modal-close" onclick="closeNoteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Titre *</label>
+                    <input type="text" id="noteTitle" placeholder="Ex: Histoire drôle n°1">
+                </div>
+                <div class="form-group">
+                    <label>Contenu *</label>
+                    <textarea id="noteContent" placeholder="Écrivez votre note ici..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closeNoteModal()">Annuler</button>
+                <button class="modal-btn save-notes" onclick="saveNote()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== FIREBASE & APP SCRIPT ==================== -->
     <script type="module">
-        // Firebase imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
@@ -1362,8 +1700,6 @@
         import { 
             getFirestore, 
             doc, 
-            setDoc, 
-            getDoc, 
             collection, 
             addDoc, 
             query, 
@@ -1371,11 +1707,9 @@
             getDocs, 
             deleteDoc, 
             updateDoc, 
-            onSnapshot,
-            orderBy
+            onSnapshot
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyCffPMQ1sVISIUDjYr2-cQ6MK3zEqMr2LE",
             authDomain: "mcnote-2d33b.firebaseapp.com",
@@ -1386,7 +1720,6 @@
             measurementId: "G-265RW13Y79"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -1394,19 +1727,21 @@
         // ==================== STATE ====================
         let currentUser = null;
         let events = [];
+        let notebooks = [];
         let currentEvent = null;
+        let currentNotebook = null;
+        let currentNoteIndex = 0;
         let currentSequenceIndex = 0;
         let editMode = false;
-        let unsubscribeEvents = null;
+        let editingNoteId = null;
 
-        // Prompter state
+        // Prompter
         let prompterSpeed = 3;
         let prompterPlaying = false;
         let prompterPosition = 0;
         let prompterAnimationId = null;
         let textSizeIndex = 1;
         const textSizes = ['size-sm', 'size-md', 'size-lg', 'size-xl'];
-        let prompterAutoResume = true; // Reprend automatiquement au relâchement
 
         // ==================== AUTH ====================
         onAuthStateChanged(auth, (user) => {
@@ -1416,125 +1751,83 @@
                 document.getElementById('homePage').style.display = 'block';
                 document.getElementById('userEmail').textContent = user.email;
                 loadEvents();
+                loadNotebooks();
             } else {
                 currentUser = null;
                 document.getElementById('authPage').style.display = 'flex';
                 document.getElementById('homePage').style.display = 'none';
-                document.getElementById('sequencePage').style.display = 'none';
-                if (unsubscribeEvents) {
-                    unsubscribeEvents();
-                    unsubscribeEvents = null;
-                }
             }
         });
 
-        // Auth form switching
         document.getElementById('showSignup').addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('loginForm').classList.add('hidden');
             document.getElementById('signupForm').classList.remove('hidden');
-            document.getElementById('authError').textContent = '';
         });
 
         document.getElementById('showLogin').addEventListener('click', (e) => {
             e.preventDefault();
             document.getElementById('signupForm').classList.add('hidden');
             document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('authError').textContent = '';
         });
 
-        // Login
         document.getElementById('loginBtn').addEventListener('click', async () => {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const btn = document.getElementById('loginBtn');
-            
-            if (!email || !password) {
-                document.getElementById('authError').textContent = 'Veuillez remplir tous les champs';
-                return;
-            }
-
+            if (!email || !password) return;
             btn.disabled = true;
             btn.innerHTML = '<div class="loading-spinner"></div>';
-
             try {
                 await signInWithEmailAndPassword(auth, email, password);
             } catch (error) {
-                document.getElementById('authError').textContent = getAuthErrorMessage(error.code);
+                document.getElementById('authError').textContent = 'Erreur de connexion';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
             }
         });
 
-        // Signup
         document.getElementById('signupBtn').addEventListener('click', async () => {
             const email = document.getElementById('signupEmail').value.trim();
             const password = document.getElementById('signupPassword').value;
             const btn = document.getElementById('signupBtn');
-            
-            if (!email || !password) {
-                document.getElementById('authError').textContent = 'Veuillez remplir tous les champs';
-                return;
-            }
-
+            if (!email || !password) return;
             btn.disabled = true;
             btn.innerHTML = '<div class="loading-spinner"></div>';
-
             try {
                 await createUserWithEmailAndPassword(auth, email, password);
             } catch (error) {
-                document.getElementById('authError').textContent = getAuthErrorMessage(error.code);
+                document.getElementById('authError').textContent = 'Erreur inscription';
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-user-plus"></i> S\'inscrire';
             }
         });
 
-        // Logout
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await signOut(auth);
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
+        // ==================== MODE TABS ====================
+        document.querySelectorAll('.mode-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.mode-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.mode + 'Mode').classList.add('active');
+            });
         });
 
-        function getAuthErrorMessage(code) {
-            const messages = {
-                'auth/email-already-in-use': 'Cette adresse e-mail est déjà utilisée',
-                'auth/invalid-email': 'Adresse e-mail invalide',
-                'auth/weak-password': 'Mot de passe trop faible (min. 6 caractères)',
-                'auth/user-not-found': 'Aucun compte avec cette adresse',
-                'auth/wrong-password': 'Mot de passe incorrect',
-                'auth/invalid-credential': 'Identifiants invalides'
-            };
-            return messages[code] || 'Erreur de connexion';
-        }
-
-        // ==================== EVENTS LOADING ====================
+        // ==================== EVENTS ====================
         async function loadEvents() {
-            if (!currentUser) return;
-
-            const eventsQuery = query(
-                collection(db, "events"),
-                where("owner", "==", currentUser.uid)
-            );
-
-            unsubscribeEvents = onSnapshot(eventsQuery, async (snapshot) => {
+            const q = query(collection(db, "events"), where("owner", "==", currentUser.uid));
+            onSnapshot(q, async (snapshot) => {
                 events = [];
                 for (const docSnap of snapshot.docs) {
-                    const eventData = { id: docSnap.id, ...docSnap.data() };
-                    
-                    // Load sequences
-                    const seqQuery = query(collection(db, "events", docSnap.id, "sequences"));
-                    const seqSnapshot = await getDocs(seqQuery);
-                    eventData.sequences = seqSnapshot.docs.map(s => ({ id: s.id, ...s.data() }));
-                    
-                    // Sort sequences by timing
-                    eventData.sequences.sort((a, b) => {
-                        const timeA = a.timing || '00:00';
-                        const timeB = b.timing || '00:00';
-                        return timeA.localeCompare(timeB);
-                    });
-                    
-                    events.push(eventData);
+                    const data = { id: docSnap.id, ...docSnap.data() };
+                    const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
+                    data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+                    data.sequences.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
+                    events.push(data);
                 }
                 renderEventsGrid();
             });
@@ -1542,97 +1835,140 @@
 
         function renderEventsGrid() {
             const grid = document.getElementById('eventsGrid');
-            
             let html = `
                 <div class="event-card create-event-card" onclick="openCreateEventModal()">
                     <div class="event-card-info">
-                        <div class="event-card-icon">
-                            <i class="fas fa-plus"></i>
-                        </div>
+                        <div class="event-card-icon"><i class="fas fa-plus"></i></div>
                         <div>
                             <div class="event-card-name">Créer un événement</div>
-                            <div class="event-card-meta">Événement vide</div>
+                            <div class="event-card-meta">Conducteur chronologique</div>
                         </div>
                     </div>
                 </div>
             `;
-
-            events.forEach(event => {
-                const seqCount = event.sequences ? event.sequences.length : 0;
-                const validatedCount = event.sequences ? event.sequences.filter(s => s.validated).length : 0;
+            events.forEach(e => {
+                const count = e.sequences?.length || 0;
+                const validated = e.sequences?.filter(s => s.validated).length || 0;
+                const isGsheet = e.sourceType === 'gsheet';
+                const iconClass = isGsheet ? 'fab fa-google-drive' : 'fas fa-calendar-check';
+                const metaText = isGsheet ? `${validated}/${count} séq. • Google Sheets` : `${validated}/${count} séquences`;
+                
                 html += `
-                    <div class="event-card" onclick="openEvent('${event.id}')">
+                    <div class="event-card" onclick="openEvent('${e.id}')">
                         <div class="event-card-info">
-                            <div class="event-card-icon">
-                                <i class="fas fa-calendar-check"></i>
+                            <div class="event-card-icon" ${isGsheet ? 'style="background: linear-gradient(135deg, #4285f4, #34a853);"' : ''}>
+                                <i class="${iconClass}"></i>
                             </div>
                             <div>
-                                <div class="event-card-name">${event.name}</div>
-                                <div class="event-card-meta">${validatedCount}/${seqCount} séquences</div>
+                                <div class="event-card-name">${e.name}</div>
+                                <div class="event-card-meta">${metaText}</div>
                             </div>
                         </div>
                         <div class="event-card-actions">
-                            <button class="event-delete-btn" onclick="event.stopPropagation(); deleteEvent('${event.id}')">
+                            ${isGsheet ? `<button class="event-refresh-btn" onclick="event.stopPropagation(); refreshEvent('${e.id}')" title="Rafraîchir depuis Google Sheets">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>` : ''}
+                            <button class="event-delete-btn" onclick="event.stopPropagation(); deleteEvent('${e.id}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
                 `;
             });
-
             grid.innerHTML = html;
         }
 
-        // Make functions globally accessible
+        window.refreshEvent = async (id) => {
+            const eventData = events.find(e => e.id === id);
+            if (!eventData || !eventData.sourceUrl) {
+                return showToast('Pas de source Google Sheets');
+            }
+            
+            if (!confirm('Rafraîchir depuis Google Sheets ? Les modifications locales seront perdues.')) return;
+            
+            showToast('Chargement...');
+            
+            try {
+                // Fetch CSV from Google Sheets
+                const response = await fetch(eventData.sourceUrl);
+                if (!response.ok) throw new Error('Impossible de récupérer les données');
+                const csvText = await response.text();
+                
+                // Parse CSV
+                const parsed = Papa.parse(csvText, { 
+                    header: true, 
+                    skipEmptyLines: true, 
+                    transformHeader: h => h.trim().toLowerCase() 
+                });
+                
+                // Delete existing sequences
+                const existingSeqs = await getDocs(collection(db, "events", id, "sequences"));
+                for (const seqDoc of existingSeqs.docs) {
+                    await deleteDoc(doc(db, "events", id, "sequences", seqDoc.id));
+                }
+                
+                // Create new sequences
+                const groups = new Map();
+                parsed.data.forEach(row => {
+                    const timing = (row.timing || '').trim();
+                    const title = (row.title || '').trim();
+                    if (!timing && !title) return;
+                    const key = `${timing}|${title}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, { 
+                            timing, 
+                            title, 
+                            people: (row.people || '').trim(), 
+                            questions: [], 
+                            validated: false 
+                        });
+                    }
+                    const qText = (row.question_text || '').trim();
+                    const qContent = (row.question_content || '').trim();
+                    if (qText || qContent) {
+                        groups.get(key).questions.push({ text: qText, content: qContent });
+                    }
+                });
+                
+                for (const seq of groups.values()) {
+                    await addDoc(collection(db, "events", id, "sequences"), seq);
+                }
+                
+                // Update lastRefresh timestamp
+                await updateDoc(doc(db, "events", id), { lastRefresh: new Date() });
+                
+                showToast(`Rafraîchi ! ${groups.size} séquences`);
+            } catch (e) {
+                console.error(e);
+                showToast('Erreur: ' + e.message);
+            }
+        };
+
         window.openCreateEventModal = () => {
             document.getElementById('createEventModal').classList.add('active');
             document.getElementById('newEventName').value = '';
         };
-
-        window.closeCreateEventModal = () => {
-            document.getElementById('createEventModal').classList.remove('active');
-        };
+        window.closeCreateEventModal = () => document.getElementById('createEventModal').classList.remove('active');
 
         window.createEmptyEvent = async () => {
             const name = document.getElementById('newEventName').value.trim();
-            if (!name) {
-                showToast('Veuillez entrer un nom');
-                return;
-            }
-
-            try {
-                await addDoc(collection(db, "events"), {
-                    name: name,
-                    owner: currentUser.uid,
-                    createdAt: new Date()
-                });
-                closeCreateEventModal();
-                showToast('Événement créé !');
-            } catch (error) {
-                showToast('Erreur: ' + error.message);
-            }
+            if (!name) return showToast('Entrez un nom');
+            await addDoc(collection(db, "events"), { name, owner: currentUser.uid, createdAt: new Date() });
+            closeCreateEventModal();
+            showToast('Événement créé !');
         };
 
-        window.deleteEvent = async (eventId) => {
-            if (!confirm('Supprimer cet événement ?')) return;
-            
-            try {
-                const seqQuery = query(collection(db, "events", eventId, "sequences"));
-                const seqSnapshot = await getDocs(seqQuery);
-                for (const seqDoc of seqSnapshot.docs) {
-                    await deleteDoc(doc(db, "events", eventId, "sequences", seqDoc.id));
-                }
-                await deleteDoc(doc(db, "events", eventId));
-                showToast('Événement supprimé');
-            } catch (error) {
-                showToast('Erreur: ' + error.message);
-            }
+        window.deleteEvent = async (id) => {
+            if (!confirm('Supprimer ?')) return;
+            const seqs = await getDocs(collection(db, "events", id, "sequences"));
+            for (const s of seqs.docs) await deleteDoc(doc(db, "events", id, "sequences", s.id));
+            await deleteDoc(doc(db, "events", id));
+            showToast('Supprimé');
         };
 
-        window.openEvent = (eventId) => {
-            currentEvent = events.find(e => e.id === eventId);
+        window.openEvent = (id) => {
+            currentEvent = events.find(e => e.id === id);
             if (!currentEvent) return;
-
             currentSequenceIndex = 0;
             document.getElementById('homePage').style.display = 'none';
             document.getElementById('sequencePage').style.display = 'flex';
@@ -1642,302 +1978,345 @@
 
         window.goToHome = () => {
             document.getElementById('sequencePage').style.display = 'none';
+            document.getElementById('notebookPage').style.display = 'none';
+            document.getElementById('noteViewPage').style.display = 'none';
             document.getElementById('homePage').style.display = 'block';
-            editMode = false;
-            document.body.classList.remove('edit-mode-active');
         };
 
-        // ==================== PROGRESS SIDEBAR ====================
-        function renderProgressSidebar() {
-            if (!currentEvent || !currentEvent.sequences) return;
-            
-            const sidebar = document.getElementById('progressSidebar');
-            let html = '';
-            
-            currentEvent.sequences.forEach((seq, index) => {
-                const isCurrent = index === currentSequenceIndex;
-                const isValidated = seq.validated;
-                let classes = 'progress-item';
-                if (isCurrent) classes += ' current';
-                if (isValidated) classes += ' validated';
-                
+        // ==================== NOTEBOOKS ====================
+        async function loadNotebooks() {
+            const q = query(collection(db, "notebooks"), where("owner", "==", currentUser.uid));
+            onSnapshot(q, async (snapshot) => {
+                notebooks = [];
+                for (const docSnap of snapshot.docs) {
+                    const data = { id: docSnap.id, ...docSnap.data() };
+                    const notesSnap = await getDocs(collection(db, "notebooks", docSnap.id, "notes"));
+                    data.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
+                    notebooks.push(data);
+                }
+                renderNotebooksGrid();
+            });
+        }
+
+        function renderNotebooksGrid() {
+            const grid = document.getElementById('notebooksGrid');
+            let html = `
+                <div class="notebook-card create-notebook-card" onclick="openCreateNotebookModal()">
+                    <div class="notebook-card-info">
+                        <div class="notebook-card-icon"><i class="fas fa-plus"></i></div>
+                        <div>
+                            <div class="notebook-card-name">Nouveau Bloc-notes</div>
+                            <div class="notebook-card-meta">Notes thématiques</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            notebooks.forEach(nb => {
                 html += `
-                    <div class="${classes}" 
-                         data-index="${index}"
-                         data-time="${seq.timing || ''}"
-                         data-title="${seq.title || ''}"
-                         onclick="goToSequence(${index})"
-                         ontouchstart="showProgressTooltip(event, ${index})"
-                         ontouchend="hideProgressTooltip()"
-                         onmouseenter="showProgressTooltip(event, ${index})"
-                         onmouseleave="hideProgressTooltip()">
-                        ${index + 1}
+                    <div class="notebook-card" onclick="openNotebook('${nb.id}')">
+                        <div class="notebook-card-info">
+                            <div class="notebook-card-icon"><i class="fas fa-book"></i></div>
+                            <div>
+                                <div class="notebook-card-name">${nb.name}</div>
+                                <div class="notebook-card-meta">${nb.notes?.length || 0} notes</div>
+                            </div>
+                        </div>
+                        <button class="notebook-delete-btn" onclick="event.stopPropagation(); deleteNotebook('${nb.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 `;
             });
-            
-            sidebar.innerHTML = html;
+            grid.innerHTML = html;
         }
 
-        window.goToSequence = (index) => {
-            if (index >= 0 && index < currentEvent.sequences.length) {
-                currentSequenceIndex = index;
-                renderProgressSidebar();
-                renderCurrentSequence();
-                hideProgressTooltip();
+        window.openCreateNotebookModal = () => {
+            document.getElementById('createNotebookModal').classList.add('active');
+            document.getElementById('newNotebookName').value = '';
+        };
+        window.closeCreateNotebookModal = () => document.getElementById('createNotebookModal').classList.remove('active');
+
+        window.createNotebook = async () => {
+            const name = document.getElementById('newNotebookName').value.trim();
+            if (!name) return showToast('Entrez un nom');
+            await addDoc(collection(db, "notebooks"), { name, owner: currentUser.uid, createdAt: new Date() });
+            closeCreateNotebookModal();
+            showToast('Bloc-notes créé !');
+        };
+
+        window.deleteNotebook = async (id) => {
+            if (!confirm('Supprimer ce bloc-notes ?')) return;
+            const notes = await getDocs(collection(db, "notebooks", id, "notes"));
+            for (const n of notes.docs) await deleteDoc(doc(db, "notebooks", id, "notes", n.id));
+            await deleteDoc(doc(db, "notebooks", id));
+            showToast('Supprimé');
+        };
+
+        window.openNotebook = (id) => {
+            currentNotebook = notebooks.find(n => n.id === id);
+            if (!currentNotebook) return;
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('notebookPage').style.display = 'flex';
+            document.getElementById('notebookTitle').textContent = currentNotebook.name;
+            renderNotesList();
+        };
+
+        window.closeNotebook = () => {
+            document.getElementById('notebookPage').style.display = 'none';
+            document.getElementById('homePage').style.display = 'block';
+        };
+
+        function renderNotesList() {
+            const list = document.getElementById('notesList');
+            let html = `
+                <div class="note-card add-note-card" onclick="openNoteModal()">
+                    <i class="fas fa-plus"></i> Ajouter une note
+                </div>
+            `;
+            (currentNotebook.notes || []).forEach((note, i) => {
+                html += `
+                    <div class="note-card" onclick="openNoteView(${i})">
+                        <div class="note-card-title">
+                            <i class="fas fa-sticky-note"></i> ${note.title}
+                        </div>
+                        <div class="note-card-preview">${note.content}</div>
+                        <div class="note-card-actions">
+                            <button class="note-action-btn prompter" onclick="event.stopPropagation(); startNotePrompterDirect(${i})">
+                                <i class="fas fa-scroll"></i> Prompteur
+                            </button>
+                            <button class="note-action-btn" onclick="event.stopPropagation(); editNote(${i})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="note-action-btn delete" onclick="event.stopPropagation(); deleteNote('${note.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        window.openNoteModal = (noteIndex = null) => {
+            editingNoteId = null;
+            document.getElementById('noteModalTitle').textContent = 'Nouvelle Note';
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            
+            if (noteIndex !== null && currentNotebook.notes[noteIndex]) {
+                const note = currentNotebook.notes[noteIndex];
+                editingNoteId = note.id;
+                document.getElementById('noteModalTitle').textContent = 'Modifier la Note';
+                document.getElementById('noteTitle').value = note.title;
+                document.getElementById('noteContent').value = note.content;
             }
+            document.getElementById('noteModal').classList.add('active');
+        };
+        window.closeNoteModal = () => document.getElementById('noteModal').classList.remove('active');
+
+        window.saveNote = async () => {
+            const title = document.getElementById('noteTitle').value.trim();
+            const content = document.getElementById('noteContent').value.trim();
+            if (!title || !content) return showToast('Remplissez tous les champs');
+
+            if (editingNoteId) {
+                await updateDoc(doc(db, "notebooks", currentNotebook.id, "notes", editingNoteId), { title, content });
+                const note = currentNotebook.notes.find(n => n.id === editingNoteId);
+                if (note) { note.title = title; note.content = content; }
+            } else {
+                const docRef = await addDoc(collection(db, "notebooks", currentNotebook.id, "notes"), { title, content, createdAt: new Date() });
+                currentNotebook.notes.push({ id: docRef.id, title, content });
+            }
+            closeNoteModal();
+            renderNotesList();
+            showToast('Note enregistrée !');
         };
 
-        window.showProgressTooltip = (event, index) => {
-            const seq = currentEvent.sequences[index];
-            if (!seq) return;
-            
-            const tooltip = document.getElementById('progressTooltip');
-            tooltip.querySelector('.tooltip-time').textContent = seq.timing || '--:--';
-            tooltip.querySelector('.tooltip-title').textContent = seq.title || 'Sans titre';
-            
-            // Positionner le tooltip
-            const rect = event.target.getBoundingClientRect();
-            tooltip.style.top = rect.top + 'px';
-            tooltip.style.display = 'block';
+        window.editNote = (index) => openNoteModal(index);
+
+        window.deleteNote = async (id) => {
+            if (!confirm('Supprimer cette note ?')) return;
+            await deleteDoc(doc(db, "notebooks", currentNotebook.id, "notes", id));
+            currentNotebook.notes = currentNotebook.notes.filter(n => n.id !== id);
+            renderNotesList();
+            showToast('Note supprimée');
         };
 
-        window.hideProgressTooltip = () => {
-            document.getElementById('progressTooltip').style.display = 'none';
+        // ==================== NOTE VIEW ====================
+        window.openNoteView = (index) => {
+            currentNoteIndex = index;
+            document.getElementById('notebookPage').style.display = 'none';
+            document.getElementById('noteViewPage').style.display = 'flex';
+            renderNoteView();
+        };
+
+        window.closeNoteView = () => {
+            document.getElementById('noteViewPage').style.display = 'none';
+            document.getElementById('notebookPage').style.display = 'flex';
+        };
+
+        function renderNoteView() {
+            const note = currentNotebook.notes[currentNoteIndex];
+            if (!note) return;
+            document.getElementById('noteViewTitle').textContent = note.title;
+            document.getElementById('noteViewContent').textContent = note.content;
+            document.getElementById('noteCounter').textContent = `${currentNoteIndex + 1} / ${currentNotebook.notes.length}`;
+            document.getElementById('prevNoteBtn').disabled = currentNoteIndex === 0;
+            document.getElementById('nextNoteBtn').disabled = currentNoteIndex >= currentNotebook.notes.length - 1;
+        }
+
+        window.prevNote = () => {
+            if (currentNoteIndex > 0) { currentNoteIndex--; renderNoteView(); }
+        };
+
+        window.nextNote = () => {
+            if (currentNoteIndex < currentNotebook.notes.length - 1) { currentNoteIndex++; renderNoteView(); }
+        };
+
+        window.editCurrentNote = () => {
+            document.getElementById('noteViewPage').style.display = 'none';
+            document.getElementById('notebookPage').style.display = 'flex';
+            openNoteModal(currentNoteIndex);
+        };
+
+        window.startNotePrompter = () => {
+            const note = currentNotebook.notes[currentNoteIndex];
+            if (note) initPrompter(note.content);
+        };
+
+        window.startNotePrompterDirect = (index) => {
+            const note = currentNotebook.notes[index];
+            if (note) initPrompter(note.content);
         };
 
         // ==================== SEQUENCE NAVIGATION ====================
+        function renderProgressSidebar() {
+            if (!currentEvent?.sequences) return;
+            const sidebar = document.getElementById('progressSidebar');
+            sidebar.innerHTML = currentEvent.sequences.map((s, i) => {
+                let cls = 'progress-item';
+                if (i === currentSequenceIndex) cls += ' current';
+                if (s.validated) cls += ' validated';
+                return `<div class="${cls}" onclick="goToSequence(${i})" 
+                    ontouchstart="showProgressTooltip(event,${i})" ontouchend="hideProgressTooltip()"
+                    onmouseenter="showProgressTooltip(event,${i})" onmouseleave="hideProgressTooltip()">${i+1}</div>`;
+            }).join('');
+        }
+
+        window.goToSequence = (i) => { currentSequenceIndex = i; renderProgressSidebar(); renderCurrentSequence(); hideProgressTooltip(); };
+        window.showProgressTooltip = (e, i) => {
+            const s = currentEvent.sequences[i];
+            const t = document.getElementById('progressTooltip');
+            t.querySelector('.tooltip-time').textContent = s.timing || '--:--';
+            t.querySelector('.tooltip-title').textContent = s.title || 'Sans titre';
+            t.style.top = e.target.getBoundingClientRect().top + 'px';
+            t.style.display = 'block';
+        };
+        window.hideProgressTooltip = () => document.getElementById('progressTooltip').style.display = 'none';
+
         function renderCurrentSequence() {
-            if (!currentEvent || !currentEvent.sequences || currentEvent.sequences.length === 0) {
+            if (!currentEvent?.sequences?.length) {
                 document.getElementById('currentTime').textContent = '--:--';
                 document.getElementById('currentTitle').textContent = 'Aucune séquence';
-                document.getElementById('currentPeople').textContent = 'Importez un fichier CSV';
-                document.getElementById('contentText').textContent = '';
                 return;
             }
-
             const seq = currentEvent.sequences[currentSequenceIndex];
-            const seqMain = document.getElementById('sequenceMain');
-            
-            // Vérifier si validée
-            if (seq.validated) {
-                seqMain.classList.add('sequence-validated');
-            } else {
-                seqMain.classList.remove('sequence-validated');
-            }
-            
-            // Current sequence
+            const main = document.getElementById('sequenceMain');
+            main.classList.toggle('sequence-validated', seq.validated);
+
             document.getElementById('currentTime').textContent = seq.timing || '--:--';
             document.getElementById('currentTitle').textContent = seq.title || '--';
             document.getElementById('currentPeople').textContent = seq.people || '';
-            
-            // Build content from questions
+
             let content = '';
-            if (seq.questions && seq.questions.length > 0) {
-                seq.questions.forEach((q, i) => {
-                    if (q.text) content += q.text + '\n\n';
-                    if (q.content) content += q.content + '\n\n';
-                });
-            }
-            content = content.trim();
-            
-            const contentEl = document.getElementById('contentText');
-            contentEl.textContent = content;
-            
-            // Check if content is long
-            const lineCount = content.split('\n').length;
-            const isLong = lineCount > 5 || content.length > 300;
-            
-            if (isLong) {
-                contentEl.classList.add('content-truncated');
-                document.getElementById('expandBtn').classList.remove('hidden');
-            } else {
-                contentEl.classList.remove('content-truncated');
-                document.getElementById('expandBtn').classList.add('hidden');
-            }
-
-            // Prompter button
-            const prompterBtn = document.getElementById('prompterBtn');
-            if (lineCount < 5 && content.length < 200) {
-                prompterBtn.disabled = true;
-            } else {
-                prompterBtn.disabled = false;
-            }
-
-            // Validate button
-            const validateBtn = document.getElementById('validateBtn');
-            if (seq.validated) {
-                validateBtn.classList.add('validated');
-                validateBtn.innerHTML = '<i class="fas fa-undo"></i> <span>Rouvrir la séquence</span>';
-            } else {
-                validateBtn.classList.remove('validated');
-                validateBtn.innerHTML = '<i class="fas fa-check-circle"></i> <span>Valider la séquence</span>';
-            }
-
-            // Quick note
+            (seq.questions || []).forEach(q => {
+                if (q.text) content += q.text + '\n\n';
+                if (q.content) content += q.content + '\n\n';
+            });
+            document.getElementById('contentText').textContent = content.trim();
             document.getElementById('quickNoteInput').value = seq.note || '';
 
-            // Previous sequence
-            const prevInfo = document.getElementById('prevSequenceInfo');
-            if (currentSequenceIndex > 0) {
-                const prev = currentEvent.sequences[currentSequenceIndex - 1];
-                prevInfo.innerHTML = `
-                    <i class="fas fa-chevron-up"></i>
-                    <span class="time">${prev.timing || '--:--'}</span>
-                    <span class="title">${prev.title || '--'}</span>
-                `;
+            const btn = document.getElementById('validateBtn');
+            if (seq.validated) {
+                btn.classList.add('validated');
+                btn.innerHTML = '<i class="fas fa-undo"></i> <span>Rouvrir</span>';
             } else {
-                prevInfo.innerHTML = `
-                    <i class="fas fa-flag"></i>
-                    <span class="title">Début</span>
-                `;
+                btn.classList.remove('validated');
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> <span>Valider</span>';
             }
 
-            // Next sequence
-            const nextInfo = document.getElementById('nextSequenceInfo');
+            // Prev
+            const prev = document.getElementById('prevSequenceInfo');
+            if (currentSequenceIndex > 0) {
+                const p = currentEvent.sequences[currentSequenceIndex - 1];
+                prev.innerHTML = `<i class="fas fa-chevron-up"></i><span class="time">${p.timing||'--:--'}</span><span>${p.title||'--'}</span>`;
+            } else {
+                prev.innerHTML = `<i class="fas fa-flag"></i><span>Début</span>`;
+            }
+
+            // Next
             const nextBar = document.getElementById('nextSequenceBar');
+            const next = document.getElementById('nextSequenceInfo');
             if (currentSequenceIndex < currentEvent.sequences.length - 1) {
-                const next = currentEvent.sequences[currentSequenceIndex + 1];
+                const n = currentEvent.sequences[currentSequenceIndex + 1];
                 nextBar.classList.remove('disabled');
-                nextInfo.innerHTML = `
-                    <div class="label">SUIVANT</div>
-                    <div class="title">${next.title || '--'}</div>
-                    <div class="time">${next.timing || '--:--'}</div>
-                `;
+                next.innerHTML = `<div class="label">SUIVANT</div><div class="title">${n.title||'--'}</div><div class="time">${n.timing||'--:--'}</div>`;
             } else {
                 nextBar.classList.add('disabled');
-                nextInfo.innerHTML = `
-                    <div class="label">FIN</div>
-                    <div class="title">Dernière séquence</div>
-                    <div class="time">--</div>
-                `;
+                next.innerHTML = `<div class="label">FIN</div><div class="title">Dernière séquence</div>`;
             }
-
-            // Update sidebar
             renderProgressSidebar();
         }
 
-        window.goToPrevious = () => {
-            if (currentSequenceIndex > 0) {
-                currentSequenceIndex--;
-                renderCurrentSequence();
-            }
-        };
+        window.goToPrevious = () => { if (currentSequenceIndex > 0) { currentSequenceIndex--; renderCurrentSequence(); } };
+        window.goToNext = () => { if (currentSequenceIndex < currentEvent.sequences.length - 1) { currentSequenceIndex++; renderCurrentSequence(); } };
 
-        window.goToNext = () => {
-            if (currentSequenceIndex < currentEvent.sequences.length - 1) {
-                currentSequenceIndex++;
-                renderCurrentSequence();
-            }
-        };
-
-        // ==================== VALIDATION ====================
         window.toggleValidation = async () => {
-            if (!currentEvent || !currentEvent.sequences[currentSequenceIndex]) return;
-            
             const seq = currentEvent.sequences[currentSequenceIndex];
-            const newValidated = !seq.validated;
-            
-            try {
-                await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), {
-                    validated: newValidated
-                });
-                
-                // Mettre à jour localement
-                seq.validated = newValidated;
-                renderCurrentSequence();
-                
-                showToast(newValidated ? 'Séquence validée ✓' : 'Séquence rouverte');
-            } catch (error) {
-                showToast('Erreur: ' + error.message);
-            }
+            seq.validated = !seq.validated;
+            await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), { validated: seq.validated });
+            renderCurrentSequence();
+            showToast(seq.validated ? 'Validée ✓' : 'Rouverte');
         };
 
-        // Quick note saving
         document.getElementById('quickNoteInput').addEventListener('input', async (e) => {
-            if (!currentEvent || !currentEvent.sequences[currentSequenceIndex]) return;
-            
-            const seq = currentEvent.sequences[currentSequenceIndex];
-            const note = e.target.value;
-            
-            try {
-                await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), {
-                    note: note
-                });
-            } catch (error) {
-                console.error('Error saving note:', error);
-            }
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            if (seq) await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), { note: e.target.value });
         });
 
-        // ==================== EDIT MODE ====================
-        window.toggleEditMode = () => {
-            editMode = !editMode;
-            document.body.classList.toggle('edit-mode-active', editMode);
-            showToast(editMode ? 'Mode édition activé' : 'Mode édition désactivé');
-        };
+        window.toggleEditMode = () => showToast('Mode édition à venir');
 
         // ==================== POPUP ====================
         window.openPopup = () => {
-            if (!currentEvent || !currentEvent.sequences[currentSequenceIndex]) return;
-            
-            const seq = currentEvent.sequences[currentSequenceIndex];
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            if (!seq) return;
             document.getElementById('popupTitle').textContent = seq.title || '--';
-            
             let content = '';
-            if (seq.questions && seq.questions.length > 0) {
-                seq.questions.forEach(q => {
-                    if (q.text) content += q.text + '\n\n';
-                    if (q.content) content += q.content + '\n\n';
-                });
-            }
+            (seq.questions || []).forEach(q => { if (q.text) content += q.text + '\n\n'; if (q.content) content += q.content + '\n\n'; });
             document.getElementById('popupContent').textContent = content.trim();
-            
-            const lineCount = content.split('\n').length;
-            const btn = document.getElementById('popupPrompterBtn');
-            btn.disabled = (lineCount < 5 && content.length < 200);
-            btn.style.opacity = btn.disabled ? '0.4' : '1';
-            
             document.getElementById('popupOverlay').classList.add('active');
         };
-
-        window.closePopup = () => {
-            document.getElementById('popupOverlay').classList.remove('active');
-        };
+        window.closePopup = () => document.getElementById('popupOverlay').classList.remove('active');
 
         // ==================== PROMPTER ====================
         window.startPrompter = () => {
-            if (!currentEvent || !currentEvent.sequences[currentSequenceIndex]) return;
-            
-            const seq = currentEvent.sequences[currentSequenceIndex];
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            if (!seq) return;
             let content = '';
-            if (seq.questions && seq.questions.length > 0) {
-                seq.questions.forEach(q => {
-                    if (q.text) content += q.text + '\n\n';
-                    if (q.content) content += q.content + '\n\n';
-                });
-            }
+            (seq.questions || []).forEach(q => { if (q.text) content += q.text + '\n\n'; if (q.content) content += q.content + '\n\n'; });
             initPrompter(content.trim());
         };
 
-        window.startPrompterFromPopup = () => {
-            closePopup();
-            startPrompter();
-        };
+        window.startPrompterFromPopup = () => { closePopup(); startPrompter(); };
 
         function initPrompter(text) {
-            const prompterText = document.getElementById('prompterText');
-            const container = document.getElementById('prompterTextContainer');
-            
-            prompterText.textContent = text;
-            prompterText.className = 'prompter-text ' + textSizes[textSizeIndex];
-            
+            document.getElementById('prompterText').textContent = text;
+            document.getElementById('prompterText').className = 'prompter-text ' + textSizes[textSizeIndex];
             prompterPosition = 0;
-            container.style.transform = `translateY(${prompterPosition}px)`;
-            
+            document.getElementById('prompterTextContainer').style.transform = `translateY(0px)`;
             prompterPlaying = true;
             document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
             document.getElementById('speedDisplay').textContent = `Vitesse: ${prompterSpeed}`;
-            
             document.body.classList.add('prompter-active');
             document.getElementById('prompterOverlay').classList.add('active');
             startPrompterAnimation();
@@ -1945,52 +2324,32 @@
 
         function startPrompterAnimation() {
             if (prompterAnimationId) cancelAnimationFrame(prompterAnimationId);
-
             const container = document.getElementById('prompterTextContainer');
             const textEl = document.getElementById('prompterText');
-            
             function animate() {
-                if (!prompterPlaying) {
-                    prompterAnimationId = requestAnimationFrame(animate);
-                    return;
+                if (prompterPlaying) {
+                    prompterPosition -= prompterSpeed * 0.5;
+                    const maxScroll = -(textEl.offsetHeight + document.querySelector('.prompter-container').offsetHeight * 0.3);
+                    if (prompterPosition < maxScroll) prompterPosition = maxScroll;
+                    container.style.transform = `translateY(${prompterPosition}px)`;
                 }
-
-                const speed = prompterSpeed * 0.5;
-                prompterPosition -= speed;
-
-                const textHeight = textEl.offsetHeight;
-                const containerHeight = document.querySelector('.prompter-container').offsetHeight;
-                const guideLinePosition = containerHeight * 0.3;
-                const maxScroll = -(textHeight + guideLinePosition);
-
-                if (prompterPosition < maxScroll) {
-                    prompterPosition = maxScroll;
-                }
-
-                container.style.transform = `translateY(${prompterPosition}px)`;
                 prompterAnimationId = requestAnimationFrame(animate);
             }
-
             prompterAnimationId = requestAnimationFrame(animate);
         }
 
         window.togglePrompterPlayPause = () => {
             prompterPlaying = !prompterPlaying;
-            document.getElementById('playPauseBtn').innerHTML = prompterPlaying 
-                ? '<i class="fas fa-pause"></i>' 
-                : '<i class="fas fa-play"></i>';
+            document.getElementById('playPauseBtn').innerHTML = prompterPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
         };
-
-        window.adjustPrompterSpeed = (delta) => {
-            prompterSpeed = Math.max(1, Math.min(10, prompterSpeed + delta));
+        window.adjustPrompterSpeed = (d) => {
+            prompterSpeed = Math.max(1, Math.min(10, prompterSpeed + d));
             document.getElementById('speedDisplay').textContent = `Vitesse: ${prompterSpeed}`;
         };
-
-        window.adjustTextSize = (delta) => {
-            textSizeIndex = Math.max(0, Math.min(textSizes.length - 1, textSizeIndex + delta));
+        window.adjustTextSize = (d) => {
+            textSizeIndex = Math.max(0, Math.min(textSizes.length - 1, textSizeIndex + d));
             document.getElementById('prompterText').className = 'prompter-text ' + textSizes[textSizeIndex];
         };
-
         window.closePrompter = () => {
             if (prompterAnimationId) cancelAnimationFrame(prompterAnimationId);
             prompterPlaying = false;
@@ -1998,248 +2357,219 @@
             document.getElementById('prompterOverlay').classList.remove('active');
         };
 
-        // Prompter touch controls - NOUVEAU : reprise auto au relâchement
+        // Touch controls
         (function() {
-            let touchStartY = 0;
-            let touchStartPos = 0;
-            let isDragging = false;
-            let wasPlaying = false;
-
-            const prompterOverlay = document.getElementById('prompterOverlay');
-
-            prompterOverlay.addEventListener('touchstart', (e) => {
+            let startY = 0, startPos = 0, dragging = false;
+            const overlay = document.getElementById('prompterOverlay');
+            overlay.addEventListener('touchstart', (e) => {
                 if (e.target.closest('.prompter-controls')) return;
                 e.preventDefault();
-                touchStartY = e.touches[0].clientY;
-                touchStartPos = prompterPosition;
-                isDragging = true;
-                wasPlaying = prompterPlaying; // Mémoriser l'état
-                prompterPlaying = false; // Pause pendant le drag
+                startY = e.touches[0].clientY;
+                startPos = prompterPosition;
+                dragging = true;
+                prompterPlaying = false;
                 document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-play"></i>';
             }, { passive: false });
-
-            prompterOverlay.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                if (e.target.closest('.prompter-controls')) return;
+            overlay.addEventListener('touchmove', (e) => {
+                if (!dragging) return;
                 e.preventDefault();
-                const deltaY = e.touches[0].clientY - touchStartY;
-                prompterPosition = touchStartPos + deltaY;
+                prompterPosition = startPos + (e.touches[0].clientY - startY);
                 document.getElementById('prompterTextContainer').style.transform = `translateY(${prompterPosition}px)`;
             }, { passive: false });
-
-            // NOUVEAU : Reprend automatiquement quand on lâche
-            prompterOverlay.addEventListener('touchend', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                // Reprend automatiquement le défilement
+            overlay.addEventListener('touchend', () => {
+                if (!dragging) return;
+                dragging = false;
                 prompterPlaying = true;
                 document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
-            }, { passive: true });
-
-            prompterOverlay.addEventListener('touchcancel', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                prompterPlaying = true;
-                document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
-            }, { passive: true });
+            });
         })();
 
-        // ==================== CSV IMPORT ====================
+        // ==================== IMPORT TABS ====================
         document.querySelectorAll('.import-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.import-content').forEach(c => c.classList.remove('active'));
                 tab.classList.add('active');
-                document.getElementById('import' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
+                const tabName = tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1);
+                document.getElementById('import' + tabName).classList.add('active');
             });
         });
 
+        // ==================== CSV IMPORT ====================
         document.getElementById('importCSVBtn').addEventListener('click', async () => {
-            const eventName = document.getElementById('csvEventName').value.trim();
-            const fileInput = document.getElementById('csvFile');
-            
-            if (!eventName) {
-                showToast('Entrez un nom d\'événement');
-                return;
-            }
-            
-            if (!fileInput.files.length) {
-                showToast('Sélectionnez un fichier CSV');
-                return;
-            }
-
+            const name = document.getElementById('csvEventName').value.trim();
+            const file = document.getElementById('csvFile').files[0];
+            if (!name || !file) return showToast('Remplissez tous les champs');
             const btn = document.getElementById('importCSVBtn');
             btn.disabled = true;
             btn.innerHTML = '<div class="loading-spinner"></div>';
-
             try {
-                const file = fileInput.files[0];
                 const text = await file.text();
-                await processCSV(eventName, text);
+                await importCSVData(name, text);
                 document.getElementById('csvEventName').value = '';
-                fileInput.value = '';
+                document.getElementById('csvFile').value = '';
                 showToast('Import réussi !');
-            } catch (error) {
-                showToast('Erreur: ' + error.message);
+            } catch (e) {
+                showToast('Erreur: ' + e.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-upload"></i> Importer CSV';
             }
         });
 
-        async function processCSV(eventName, csvText) {
-            const parsed = Papa.parse(csvText, {
-                header: true,
-                skipEmptyLines: true,
-                transformHeader: h => h.trim().toLowerCase()
-            });
-
-            if (parsed.errors.length > 0) {
-                throw new Error('Erreur CSV');
+        // ==================== GOOGLE SHEETS IMPORT ====================
+        document.getElementById('importGsheetBtn').addEventListener('click', async () => {
+            const name = document.getElementById('gsheetEventName').value.trim();
+            let url = document.getElementById('gsheetUrl').value.trim();
+            if (!name || !url) return showToast('Remplissez tous les champs');
+            
+            const btn = document.getElementById('importGsheetBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div>';
+            
+            try {
+                // Convert Google Sheets URL to CSV export URL if needed
+                if (url.includes('docs.google.com/spreadsheets')) {
+                    // Extract spreadsheet ID
+                    const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                    if (match) {
+                        const sheetId = match[1];
+                        // Check if there's a gid parameter
+                        const gidMatch = url.match(/gid=(\d+)/);
+                        const gid = gidMatch ? gidMatch[1] : '0';
+                        url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+                    }
+                }
+                
+                // Fetch the CSV data
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Impossible de récupérer le fichier. Vérifiez que la feuille est publiée.');
+                const text = await response.text();
+                
+                await importCSVData(name, text, url);
+                document.getElementById('gsheetEventName').value = '';
+                document.getElementById('gsheetUrl').value = '';
+                showToast('Import réussi !');
+            } catch (e) {
+                console.error(e);
+                showToast('Erreur: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fab fa-google-drive"></i> Importer depuis Google Sheets';
             }
+        });
 
-            const eventRef = await addDoc(collection(db, "events"), {
-                name: eventName,
-                owner: currentUser.uid,
-                createdAt: new Date()
+        // ==================== COMMON CSV PARSER ====================
+        async function importCSVData(name, csvText, sourceUrl = null) {
+            const parsed = Papa.parse(csvText, { 
+                header: true, 
+                skipEmptyLines: true, 
+                transformHeader: h => h.trim().toLowerCase() 
             });
-
+            
+            if (parsed.errors.length > 0) {
+                console.warn('CSV parsing warnings:', parsed.errors);
+            }
+            
+            const eventData = { 
+                name, 
+                owner: currentUser.uid, 
+                createdAt: new Date()
+            };
+            
+            // Store source URL for refresh capability
+            if (sourceUrl) {
+                eventData.sourceUrl = sourceUrl;
+                eventData.sourceType = 'gsheet';
+            }
+            
+            const eventRef = await addDoc(collection(db, "events"), eventData);
+            
             const groups = new Map();
             parsed.data.forEach(row => {
                 const timing = (row.timing || '').trim();
                 const title = (row.title || '').trim();
                 if (!timing && !title) return;
-
                 const key = `${timing}|${title}`;
                 if (!groups.has(key)) {
-                    groups.set(key, {
-                        timing,
-                        title,
-                        people: (row.people || '').trim(),
-                        questions: [],
-                        validated: false
+                    groups.set(key, { 
+                        timing, 
+                        title, 
+                        people: (row.people || '').trim(), 
+                        questions: [], 
+                        validated: false 
                     });
                 }
-
                 const qText = (row.question_text || '').trim();
                 const qContent = (row.question_content || '').trim();
                 if (qText || qContent) {
                     groups.get(key).questions.push({ text: qText, content: qContent });
                 }
             });
-
+            
             for (const seq of groups.values()) {
                 await addDoc(collection(db, "events", eventRef.id, "sequences"), seq);
             }
+            
+            return eventRef.id;
         }
 
         // ==================== AIRTABLE IMPORT ====================
         document.getElementById('importAirtableBtn').addEventListener('click', async () => {
-            const eventName = document.getElementById('airtableEventName').value.trim();
-            
-            if (!eventName) {
-                showToast('Entrez un nom d\'événement');
-                return;
-            }
-
+            const name = document.getElementById('airtableEventName').value.trim();
+            if (!name) return showToast('Entrez un nom');
             const btn = document.getElementById('importAirtableBtn');
             btn.disabled = true;
             btn.innerHTML = '<div class="loading-spinner"></div>';
-
             try {
-                const response = await fetch('/.netlify/functions/airtable-import-2', {
+                const res = await fetch('/.netlify/functions/airtable-import-2', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: currentUser.uid,
-                        eventName: eventName
-                    })
+                    body: JSON.stringify({ userId: currentUser.uid, eventName: name })
                 });
-
-                const result = await response.json();
-                
+                const result = await res.json();
                 if (result.success) {
                     document.getElementById('airtableEventName').value = '';
                     showToast(`${result.sequencesCount} séquences importées !`);
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (error) {
-                showToast('Erreur Airtable: ' + error.message);
+                } else throw new Error(result.error);
+            } catch (e) {
+                showToast('Erreur: ' + e.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-database"></i> Importer depuis Airtable';
             }
         });
 
-        // ==================== TOAST ====================
-        function showToast(message) {
-            const existing = document.querySelector('.toast');
-            if (existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-
-            setTimeout(() => toast.remove(), 2500);
+        function showToast(msg) {
+            const old = document.querySelector('.toast');
+            if (old) old.remove();
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2500);
         }
         window.showToast = showToast;
 
-        // ==================== KEYBOARD & SWIPE ====================
+        // Keyboard
         document.addEventListener('keydown', (e) => {
-            if (document.getElementById('sequencePage').style.display !== 'flex') return;
-
             if (document.getElementById('prompterOverlay').classList.contains('active')) {
-                switch(e.key) {
-                    case ' ': e.preventDefault(); togglePrompterPlayPause(); break;
-                    case 'Escape': closePrompter(); break;
-                    case 'ArrowUp': adjustPrompterSpeed(1); break;
-                    case 'ArrowDown': adjustPrompterSpeed(-1); break;
-                    case '+': case '=': adjustTextSize(1); break;
-                    case '-': adjustTextSize(-1); break;
-                }
+                if (e.key === ' ') { e.preventDefault(); togglePrompterPlayPause(); }
+                if (e.key === 'Escape') closePrompter();
                 return;
             }
-
-            if (document.getElementById('popupOverlay').classList.contains('active')) {
-                if (e.key === 'Escape') closePopup();
-                return;
+            if (document.getElementById('sequencePage').style.display === 'flex') {
+                if (e.key === 'ArrowUp') { e.preventDefault(); goToPrevious(); }
+                if (e.key === 'ArrowDown') { e.preventDefault(); goToNext(); }
+                if (e.key === 'Escape') goToHome();
+                if (e.key === 'v') toggleValidation();
             }
-
-            switch(e.key) {
-                case 'ArrowUp': e.preventDefault(); goToPrevious(); break;
-                case 'ArrowDown': e.preventDefault(); goToNext(); break;
-                case 'Escape': goToHome(); break;
-                case 'e': if (!e.ctrlKey && !e.metaKey) toggleEditMode(); break;
-                case 'v': if (!e.ctrlKey && !e.metaKey) toggleValidation(); break;
+            if (document.getElementById('noteViewPage').style.display === 'flex') {
+                if (e.key === 'ArrowLeft') prevNote();
+                if (e.key === 'ArrowRight') nextNote();
+                if (e.key === 'Escape') closeNoteView();
             }
         });
-
-        // Swipe gestures
-        (function() {
-            let touchStartY = 0;
-            let touchStartX = 0;
-            const page = document.getElementById('sequencePage');
-
-            page.addEventListener('touchstart', (e) => {
-                if (e.target.closest('.prev-sequence-bar, .next-sequence-bar, .progress-sidebar, button, textarea, input')) return;
-                touchStartY = e.touches[0].clientY;
-                touchStartX = e.touches[0].clientX;
-            }, { passive: true });
-
-            page.addEventListener('touchend', (e) => {
-                if (e.target.closest('.prev-sequence-bar, .next-sequence-bar, .progress-sidebar, button, textarea, input')) return;
-                
-                const deltaY = e.changedTouches[0].clientY - touchStartY;
-                const deltaX = e.changedTouches[0].clientX - touchStartX;
-
-                if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
-                    if (deltaY < 0) goToNext();
-                    else goToPrevious();
-                }
-            }, { passive: true });
-        })();
     </script>
 </body>
 </html>
