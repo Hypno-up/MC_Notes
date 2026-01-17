@@ -706,6 +706,10 @@
             background: #000;
             z-index: 2000;
             flex-direction: column;
+            /* Empêcher le pull-to-refresh du navigateur */
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
         }
 
         .prompter-overlay.active {
@@ -721,6 +725,7 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+            touch-action: manipulation;
         }
 
         .prompter-control-btn {
@@ -752,6 +757,9 @@
             flex: 1;
             position: relative;
             overflow: hidden;
+            /* Empêcher le pull-to-refresh dans le conteneur */
+            touch-action: none;
+            overscroll-behavior: contain;
         }
 
         .prompter-guide-line {
@@ -959,6 +967,15 @@
 
         /* Utilities */
         .hidden { display: none !important; }
+
+        /* Bloquer le scroll de la page quand le prompteur est actif */
+        body.prompter-active {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
     </style>
 </head>
 <body>
@@ -1668,6 +1685,8 @@
             document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
             document.getElementById('speedDisplay').textContent = `Vitesse: ${prompterSpeed}`;
             
+            // Bloquer le scroll de la page
+            document.body.classList.add('prompter-active');
             document.getElementById('prompterOverlay').classList.add('active');
             startPrompterAnimation();
         }
@@ -1723,28 +1742,47 @@
         window.closePrompter = () => {
             if (prompterAnimationId) cancelAnimationFrame(prompterAnimationId);
             prompterPlaying = false;
+            // Débloquer le scroll de la page
+            document.body.classList.remove('prompter-active');
             document.getElementById('prompterOverlay').classList.remove('active');
         };
 
-        // Prompter touch controls
+        // Prompter touch controls - scroll manuel sans recharger la page
         (function() {
             let touchStartY = 0;
             let touchStartPos = 0;
+            let isDragging = false;
 
-            document.getElementById('prompterOverlay').addEventListener('touchstart', (e) => {
+            const prompterOverlay = document.getElementById('prompterOverlay');
+            const prompterContainer = document.querySelector('.prompter-container');
+
+            // Empêcher le comportement par défaut sur tout le prompteur
+            prompterOverlay.addEventListener('touchstart', (e) => {
                 if (e.target.closest('.prompter-controls')) return;
+                e.preventDefault(); // Empêche le pull-to-refresh
                 touchStartY = e.touches[0].clientY;
                 touchStartPos = prompterPosition;
+                isDragging = true;
                 prompterPlaying = false;
                 document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-play"></i>';
-            });
+            }, { passive: false });
 
-            document.getElementById('prompterOverlay').addEventListener('touchmove', (e) => {
+            prompterOverlay.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
                 if (e.target.closest('.prompter-controls')) return;
+                e.preventDefault(); // Empêche le scroll de la page
                 const deltaY = e.touches[0].clientY - touchStartY;
                 prompterPosition = touchStartPos + deltaY;
                 document.getElementById('prompterTextContainer').style.transform = `translateY(${prompterPosition}px)`;
-            });
+            }, { passive: false });
+
+            prompterOverlay.addEventListener('touchend', (e) => {
+                isDragging = false;
+            }, { passive: true });
+
+            prompterOverlay.addEventListener('touchcancel', (e) => {
+                isDragging = false;
+            }, { passive: true });
         })();
 
         // ==================== CSV IMPORT ====================
