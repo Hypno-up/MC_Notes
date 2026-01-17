@@ -213,7 +213,6 @@
             font-size: 0.9rem;
         }
 
-        /* Events Section */
         .section-title {
             display: flex;
             align-items: center;
@@ -291,7 +290,6 @@
             cursor: pointer;
         }
 
-        /* Create Event Button */
         .create-event-card {
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             border: none;
@@ -303,7 +301,6 @@
             background: linear-gradient(135deg, #5457d6, #7c3aed);
         }
 
-        /* Import Section */
         .import-section {
             background: var(--bg-card);
             border-radius: 16px;
@@ -388,6 +385,94 @@
             height: 100dvh;
             flex-direction: column;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* ==================== BARRE DE PROGRESSION LATÉRALE ==================== */
+        .progress-sidebar {
+            position: absolute;
+            left: 0;
+            top: 55px;
+            bottom: 65px;
+            width: 35px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 0;
+            z-index: 50;
+            gap: 4px;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+        .progress-sidebar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .progress-item {
+            width: 26px;
+            min-height: 26px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .progress-item:active {
+            transform: scale(1.1);
+        }
+
+        .progress-item.current {
+            background: var(--accent-primary);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .progress-item.validated {
+            background: var(--success);
+        }
+
+        .progress-item.validated.current {
+            background: var(--success);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Tooltip titre séquence */
+        .progress-tooltip {
+            position: fixed;
+            left: 45px;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-primary);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            max-width: 250px;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            pointer-events: none;
+            animation: tooltipFadeIn 0.15s ease;
+        }
+
+        .progress-tooltip .tooltip-time {
+            color: var(--accent-secondary);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        .progress-tooltip .tooltip-title {
+            margin-top: 3px;
+        }
+
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateX(-5px); }
+            to { opacity: 1; transform: translateX(0); }
         }
 
         /* Previous Sequence Header */
@@ -396,6 +481,7 @@
             background: rgba(30, 30, 50, 0.95);
             border-bottom: 1px solid rgba(255,255,255,0.1);
             padding: 12px 15px;
+            padding-left: 45px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -443,30 +529,41 @@
             display: flex;
             flex-direction: column;
             padding: 15px;
+            padding-left: 45px;
             overflow: hidden;
         }
 
         .sequence-header {
             flex-shrink: 0;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .sequence-time {
-            font-size: 2.2rem;
+            font-size: 2rem;
             font-weight: 700;
             color: var(--accent-primary);
         }
 
+        /* Séquence validée */
+        .sequence-validated .sequence-time {
+            color: var(--success);
+        }
+
+        .sequence-validated .sequence-content {
+            border: 2px solid var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
         .sequence-title {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 600;
-            margin-top: 5px;
+            margin-top: 3px;
         }
 
         .sequence-people {
             color: var(--accent-secondary);
-            font-size: 0.95rem;
-            margin-top: 5px;
+            font-size: 0.9rem;
+            margin-top: 3px;
         }
 
         /* Content Area */
@@ -474,28 +571,29 @@
             flex: 1;
             background: var(--bg-card);
             border-radius: 16px;
-            padding: 15px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             position: relative;
+            transition: all 0.3s;
         }
 
         .content-text {
             flex: 1;
             overflow: hidden;
-            font-size: 1rem;
-            line-height: 1.7;
+            font-size: 0.95rem;
+            line-height: 1.6;
             white-space: pre-wrap;
         }
 
         .content-truncated::after {
             content: '';
             position: absolute;
-            bottom: 140px;
+            bottom: 180px;
             left: 0;
             right: 0;
-            height: 60px;
+            height: 50px;
             background: linear-gradient(transparent, var(--bg-card));
             pointer-events: none;
         }
@@ -503,8 +601,8 @@
         /* Quick Note */
         .quick-note-section {
             flex-shrink: 0;
-            margin-top: 10px;
-            padding-top: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px solid rgba(255,255,255,0.1);
         }
 
@@ -513,11 +611,11 @@
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 10px;
-            padding: 10px 12px;
+            padding: 8px 10px;
             color: var(--text-primary);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             resize: none;
-            height: 50px;
+            height: 45px;
         }
 
         .quick-note-input:focus {
@@ -534,21 +632,21 @@
             flex-shrink: 0;
             display: flex;
             justify-content: space-between;
-            margin-top: 10px;
-            gap: 8px;
+            margin-top: 8px;
+            gap: 6px;
         }
 
         .action-icon-btn {
             background: rgba(255,255,255,0.1);
             border: none;
             color: var(--text-primary);
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-radius: 10px;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             transition: all 0.2s;
         }
 
@@ -566,7 +664,7 @@
         }
 
         .action-icon-btn.edit-btn {
-            background: var(--success);
+            background: rgba(99, 102, 241, 0.3);
         }
 
         .action-icon-btn:disabled {
@@ -574,11 +672,49 @@
             cursor: not-allowed;
         }
 
+        /* Bouton de validation */
+        .validate-section {
+            flex-shrink: 0;
+            margin-top: 10px;
+        }
+
+        .validate-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            background: var(--success);
+            color: white;
+        }
+
+        .validate-btn:active {
+            transform: scale(0.98);
+        }
+
+        .validate-btn.validated {
+            background: rgba(255,255,255,0.1);
+            color: var(--success);
+            border: 2px solid var(--success);
+        }
+
+        .validate-btn.validated i {
+            color: var(--success);
+        }
+
         /* Next Sequence Footer */
         .next-sequence-bar {
             flex-shrink: 0;
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            padding: 15px;
+            padding: 12px 15px;
+            padding-left: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -601,7 +737,7 @@
         }
 
         .next-sequence-info .label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             opacity: 0.8;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -609,11 +745,11 @@
 
         .next-sequence-info .title {
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
 
         .next-sequence-info .time {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             opacity: 0.9;
         }
 
@@ -706,10 +842,8 @@
             background: #000;
             z-index: 2000;
             flex-direction: column;
-            /* Empêcher le pull-to-refresh du navigateur */
             touch-action: none;
             overscroll-behavior: none;
-            -webkit-overflow-scrolling: touch;
         }
 
         .prompter-overlay.active {
@@ -757,7 +891,6 @@
             flex: 1;
             position: relative;
             overflow: hidden;
-            /* Empêcher le pull-to-refresh dans le conteneur */
             touch-action: none;
             overscroll-behavior: contain;
         }
@@ -968,7 +1101,7 @@
         /* Utilities */
         .hidden { display: none !important; }
 
-        /* Bloquer le scroll de la page quand le prompteur est actif */
+        /* Bloquer le scroll quand le prompteur est actif */
         body.prompter-active {
             overflow: hidden;
             position: fixed;
@@ -1075,6 +1208,11 @@
 
     <!-- ==================== SEQUENCE VIEW PAGE ==================== -->
     <div id="sequencePage">
+        <!-- Barre de progression latérale -->
+        <div class="progress-sidebar" id="progressSidebar">
+            <!-- Généré dynamiquement -->
+        </div>
+
         <div class="prev-sequence-bar" onclick="goToPrevious()">
             <div class="prev-sequence-info" id="prevSequenceInfo">
                 <i class="fas fa-chevron-up"></i>
@@ -1086,7 +1224,7 @@
             </button>
         </div>
 
-        <div class="sequence-main">
+        <div class="sequence-main" id="sequenceMain">
             <div class="sequence-header">
                 <div class="sequence-time" id="currentTime">--:--</div>
                 <div class="sequence-title" id="currentTitle">--</div>
@@ -1115,6 +1253,13 @@
                         <i class="fas fa-scroll"></i> Prompteur
                     </button>
                 </div>
+
+                <!-- Bouton Validation -->
+                <div class="validate-section">
+                    <button class="validate-btn" id="validateBtn" onclick="toggleValidation()">
+                        <i class="fas fa-check-circle"></i> <span>Valider la séquence</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1127,6 +1272,12 @@
             </div>
             <i class="fas fa-chevron-down"></i>
         </div>
+    </div>
+
+    <!-- Tooltip pour barre de progression -->
+    <div class="progress-tooltip" id="progressTooltip" style="display:none;">
+        <div class="tooltip-time"></div>
+        <div class="tooltip-title"></div>
     </div>
 
     <!-- ==================== POPUP ==================== -->
@@ -1255,6 +1406,7 @@
         let prompterAnimationId = null;
         let textSizeIndex = 1;
         const textSizes = ['size-sm', 'size-md', 'size-lg', 'size-xl'];
+        let prompterAutoResume = true; // Reprend automatiquement au relâchement
 
         // ==================== AUTH ====================
         onAuthStateChanged(auth, (user) => {
@@ -1407,6 +1559,7 @@
 
             events.forEach(event => {
                 const seqCount = event.sequences ? event.sequences.length : 0;
+                const validatedCount = event.sequences ? event.sequences.filter(s => s.validated).length : 0;
                 html += `
                     <div class="event-card" onclick="openEvent('${event.id}')">
                         <div class="event-card-info">
@@ -1415,7 +1568,7 @@
                             </div>
                             <div>
                                 <div class="event-card-name">${event.name}</div>
-                                <div class="event-card-meta">${seqCount} séquence${seqCount > 1 ? 's' : ''}</div>
+                                <div class="event-card-meta">${validatedCount}/${seqCount} séquences</div>
                             </div>
                         </div>
                         <div class="event-card-actions">
@@ -1464,13 +1617,11 @@
             if (!confirm('Supprimer cet événement ?')) return;
             
             try {
-                // Delete sequences first
                 const seqQuery = query(collection(db, "events", eventId, "sequences"));
                 const seqSnapshot = await getDocs(seqQuery);
                 for (const seqDoc of seqSnapshot.docs) {
                     await deleteDoc(doc(db, "events", eventId, "sequences", seqDoc.id));
                 }
-                // Delete event
                 await deleteDoc(doc(db, "events", eventId));
                 showToast('Événement supprimé');
             } catch (error) {
@@ -1485,6 +1636,7 @@
             currentSequenceIndex = 0;
             document.getElementById('homePage').style.display = 'none';
             document.getElementById('sequencePage').style.display = 'flex';
+            renderProgressSidebar();
             renderCurrentSequence();
         };
 
@@ -1493,6 +1645,65 @@
             document.getElementById('homePage').style.display = 'block';
             editMode = false;
             document.body.classList.remove('edit-mode-active');
+        };
+
+        // ==================== PROGRESS SIDEBAR ====================
+        function renderProgressSidebar() {
+            if (!currentEvent || !currentEvent.sequences) return;
+            
+            const sidebar = document.getElementById('progressSidebar');
+            let html = '';
+            
+            currentEvent.sequences.forEach((seq, index) => {
+                const isCurrent = index === currentSequenceIndex;
+                const isValidated = seq.validated;
+                let classes = 'progress-item';
+                if (isCurrent) classes += ' current';
+                if (isValidated) classes += ' validated';
+                
+                html += `
+                    <div class="${classes}" 
+                         data-index="${index}"
+                         data-time="${seq.timing || ''}"
+                         data-title="${seq.title || ''}"
+                         onclick="goToSequence(${index})"
+                         ontouchstart="showProgressTooltip(event, ${index})"
+                         ontouchend="hideProgressTooltip()"
+                         onmouseenter="showProgressTooltip(event, ${index})"
+                         onmouseleave="hideProgressTooltip()">
+                        ${index + 1}
+                    </div>
+                `;
+            });
+            
+            sidebar.innerHTML = html;
+        }
+
+        window.goToSequence = (index) => {
+            if (index >= 0 && index < currentEvent.sequences.length) {
+                currentSequenceIndex = index;
+                renderProgressSidebar();
+                renderCurrentSequence();
+                hideProgressTooltip();
+            }
+        };
+
+        window.showProgressTooltip = (event, index) => {
+            const seq = currentEvent.sequences[index];
+            if (!seq) return;
+            
+            const tooltip = document.getElementById('progressTooltip');
+            tooltip.querySelector('.tooltip-time').textContent = seq.timing || '--:--';
+            tooltip.querySelector('.tooltip-title').textContent = seq.title || 'Sans titre';
+            
+            // Positionner le tooltip
+            const rect = event.target.getBoundingClientRect();
+            tooltip.style.top = rect.top + 'px';
+            tooltip.style.display = 'block';
+        };
+
+        window.hideProgressTooltip = () => {
+            document.getElementById('progressTooltip').style.display = 'none';
         };
 
         // ==================== SEQUENCE NAVIGATION ====================
@@ -1506,6 +1717,14 @@
             }
 
             const seq = currentEvent.sequences[currentSequenceIndex];
+            const seqMain = document.getElementById('sequenceMain');
+            
+            // Vérifier si validée
+            if (seq.validated) {
+                seqMain.classList.add('sequence-validated');
+            } else {
+                seqMain.classList.remove('sequence-validated');
+            }
             
             // Current sequence
             document.getElementById('currentTime').textContent = seq.timing || '--:--';
@@ -1543,6 +1762,16 @@
                 prompterBtn.disabled = true;
             } else {
                 prompterBtn.disabled = false;
+            }
+
+            // Validate button
+            const validateBtn = document.getElementById('validateBtn');
+            if (seq.validated) {
+                validateBtn.classList.add('validated');
+                validateBtn.innerHTML = '<i class="fas fa-undo"></i> <span>Rouvrir la séquence</span>';
+            } else {
+                validateBtn.classList.remove('validated');
+                validateBtn.innerHTML = '<i class="fas fa-check-circle"></i> <span>Valider la séquence</span>';
             }
 
             // Quick note
@@ -1583,6 +1812,9 @@
                     <div class="time">--</div>
                 `;
             }
+
+            // Update sidebar
+            renderProgressSidebar();
         }
 
         window.goToPrevious = () => {
@@ -1596,6 +1828,28 @@
             if (currentSequenceIndex < currentEvent.sequences.length - 1) {
                 currentSequenceIndex++;
                 renderCurrentSequence();
+            }
+        };
+
+        // ==================== VALIDATION ====================
+        window.toggleValidation = async () => {
+            if (!currentEvent || !currentEvent.sequences[currentSequenceIndex]) return;
+            
+            const seq = currentEvent.sequences[currentSequenceIndex];
+            const newValidated = !seq.validated;
+            
+            try {
+                await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), {
+                    validated: newValidated
+                });
+                
+                // Mettre à jour localement
+                seq.validated = newValidated;
+                renderCurrentSequence();
+                
+                showToast(newValidated ? 'Séquence validée ✓' : 'Séquence rouverte');
+            } catch (error) {
+                showToast('Erreur: ' + error.message);
             }
         };
 
@@ -1638,7 +1892,6 @@
             }
             document.getElementById('popupContent').textContent = content.trim();
             
-            // Disable prompter if short
             const lineCount = content.split('\n').length;
             const btn = document.getElementById('popupPrompterBtn');
             btn.disabled = (lineCount < 5 && content.length < 200);
@@ -1685,7 +1938,6 @@
             document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
             document.getElementById('speedDisplay').textContent = `Vitesse: ${prompterSpeed}`;
             
-            // Bloquer le scroll de la page
             document.body.classList.add('prompter-active');
             document.getElementById('prompterOverlay').classList.add('active');
             startPrompterAnimation();
@@ -1742,46 +1994,53 @@
         window.closePrompter = () => {
             if (prompterAnimationId) cancelAnimationFrame(prompterAnimationId);
             prompterPlaying = false;
-            // Débloquer le scroll de la page
             document.body.classList.remove('prompter-active');
             document.getElementById('prompterOverlay').classList.remove('active');
         };
 
-        // Prompter touch controls - scroll manuel sans recharger la page
+        // Prompter touch controls - NOUVEAU : reprise auto au relâchement
         (function() {
             let touchStartY = 0;
             let touchStartPos = 0;
             let isDragging = false;
+            let wasPlaying = false;
 
             const prompterOverlay = document.getElementById('prompterOverlay');
-            const prompterContainer = document.querySelector('.prompter-container');
 
-            // Empêcher le comportement par défaut sur tout le prompteur
             prompterOverlay.addEventListener('touchstart', (e) => {
                 if (e.target.closest('.prompter-controls')) return;
-                e.preventDefault(); // Empêche le pull-to-refresh
+                e.preventDefault();
                 touchStartY = e.touches[0].clientY;
                 touchStartPos = prompterPosition;
                 isDragging = true;
-                prompterPlaying = false;
+                wasPlaying = prompterPlaying; // Mémoriser l'état
+                prompterPlaying = false; // Pause pendant le drag
                 document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-play"></i>';
             }, { passive: false });
 
             prompterOverlay.addEventListener('touchmove', (e) => {
                 if (!isDragging) return;
                 if (e.target.closest('.prompter-controls')) return;
-                e.preventDefault(); // Empêche le scroll de la page
+                e.preventDefault();
                 const deltaY = e.touches[0].clientY - touchStartY;
                 prompterPosition = touchStartPos + deltaY;
                 document.getElementById('prompterTextContainer').style.transform = `translateY(${prompterPosition}px)`;
             }, { passive: false });
 
+            // NOUVEAU : Reprend automatiquement quand on lâche
             prompterOverlay.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
                 isDragging = false;
+                // Reprend automatiquement le défilement
+                prompterPlaying = true;
+                document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
             }, { passive: true });
 
             prompterOverlay.addEventListener('touchcancel', (e) => {
+                if (!isDragging) return;
                 isDragging = false;
+                prompterPlaying = true;
+                document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-pause"></i>';
             }, { passive: true });
         })();
 
@@ -1839,14 +2098,12 @@
                 throw new Error('Erreur CSV');
             }
 
-            // Create event
             const eventRef = await addDoc(collection(db, "events"), {
                 name: eventName,
                 owner: currentUser.uid,
                 createdAt: new Date()
             });
 
-            // Group by timing+title
             const groups = new Map();
             parsed.data.forEach(row => {
                 const timing = (row.timing || '').trim();
@@ -1859,7 +2116,8 @@
                         timing,
                         title,
                         people: (row.people || '').trim(),
-                        questions: []
+                        questions: [],
+                        validated: false
                     });
                 }
 
@@ -1870,7 +2128,6 @@
                 }
             });
 
-            // Save sequences
             for (const seq of groups.values()) {
                 await addDoc(collection(db, "events", eventRef.id, "sequences"), seq);
             }
@@ -1955,6 +2212,7 @@
                 case 'ArrowDown': e.preventDefault(); goToNext(); break;
                 case 'Escape': goToHome(); break;
                 case 'e': if (!e.ctrlKey && !e.metaKey) toggleEditMode(); break;
+                case 'v': if (!e.ctrlKey && !e.metaKey) toggleValidation(); break;
             }
         });
 
@@ -1965,13 +2223,13 @@
             const page = document.getElementById('sequencePage');
 
             page.addEventListener('touchstart', (e) => {
-                if (e.target.closest('.prev-sequence-bar, .next-sequence-bar, button, textarea, input')) return;
+                if (e.target.closest('.prev-sequence-bar, .next-sequence-bar, .progress-sidebar, button, textarea, input')) return;
                 touchStartY = e.touches[0].clientY;
                 touchStartX = e.touches[0].clientX;
             }, { passive: true });
 
             page.addEventListener('touchend', (e) => {
-                if (e.target.closest('.prev-sequence-bar, .next-sequence-bar, button, textarea, input')) return;
+                if (e.target.closest('.prev-sequence-bar, .next-sequence-bar, .progress-sidebar, button, textarea, input')) return;
                 
                 const deltaY = e.changedTouches[0].clientY - touchStartY;
                 const deltaX = e.changedTouches[0].clientX - touchStartX;
