@@ -439,6 +439,29 @@
             cursor: not-allowed;
         }
 
+        .template-download-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px dashed rgba(255,255,255,0.3);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .template-download-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            background: rgba(139, 92, 246, 0.1);
+        }
+
         /* ==================== SEQUENCE VIEW PAGE ==================== */
         #sequencePage {
             display: none;
@@ -1425,6 +1448,9 @@
                 <div class="import-content active" id="importCsv">
                     <input type="text" class="import-input" id="csvEventName" placeholder="Nom de l'événement">
                     <input type="file" class="import-input" id="csvFile" accept=".csv">
+                    <button class="template-download-btn" onclick="downloadEventTemplate()">
+                        <i class="fas fa-download"></i> Télécharger le modèle CSV
+                    </button>
                     <button class="import-btn" id="importCSVBtn">
                         <i class="fas fa-upload"></i> Importer CSV
                     </button>
@@ -1462,6 +1488,41 @@
                 <i class="fas fa-sticky-note"></i> Mes Bloc-notes
             </div>
             <div class="notebooks-grid" id="notebooksGrid"></div>
+
+            <!-- Import Section for Notebooks -->
+            <div class="import-section" style="margin-top: 20px;">
+                <div class="section-title" style="margin-bottom:15px;">
+                    <i class="fas fa-file-import"></i> Importer un Bloc-notes
+                </div>
+                <div class="import-tabs">
+                    <button class="import-tab active" data-tab="noteCsv">CSV</button>
+                    <button class="import-tab" data-tab="noteGsheet">Google Sheets</button>
+                </div>
+                <div class="import-content active" id="importNoteCsv">
+                    <input type="text" class="import-input" id="noteCsvName" placeholder="Nom du bloc-notes (thématique)">
+                    <input type="file" class="import-input" id="noteCsvFile" accept=".csv">
+                    <button class="template-download-btn" onclick="downloadNotebookTemplate()">
+                        <i class="fas fa-download"></i> Télécharger le modèle CSV
+                    </button>
+                    <small style="color: var(--text-secondary); display: block; margin-bottom: 10px;">
+                        📋 Colonnes requises : <strong>title</strong>, <strong>content</strong>
+                    </small>
+                    <button class="import-btn" id="importNoteCsvBtn" style="background: var(--notes-color);">
+                        <i class="fas fa-upload"></i> Importer CSV
+                    </button>
+                </div>
+                <div class="import-content" id="importNoteGsheet">
+                    <input type="text" class="import-input" id="noteGsheetName" placeholder="Nom du bloc-notes (thématique)">
+                    <input type="text" class="import-input" id="noteGsheetUrl" placeholder="URL Google Sheets">
+                    <small style="color: var(--text-secondary); display: block; margin-bottom: 10px; line-height: 1.6;">
+                        📋 Colonnes requises : <strong>title</strong>, <strong>content</strong><br>
+                        🔄 <em>Synchronisation automatique activée</em>
+                    </small>
+                    <button class="import-btn" id="importNoteGsheetBtn" style="background: linear-gradient(135deg, var(--notes-color), #4285f4);">
+                        <i class="fab fa-google-drive"></i> Importer depuis Google Sheets
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1682,10 +1743,66 @@
                     <label>Contenu *</label>
                     <textarea id="noteContent" placeholder="Écrivez votre note ici..."></textarea>
                 </div>
+                <div class="gsheet-sync-info" id="noteGsheetSyncInfo" style="display:none; margin-top: 15px; padding: 12px; background: rgba(236,72,153,0.1); border-radius: 8px; border-left: 3px solid var(--notes-color);">
+                    <small style="color: var(--notes-color);">
+                        <i class="fab fa-google-drive"></i> <strong>Synchronisation Google Sheets</strong><br>
+                        Les modifications seront sauvegardées localement. Cliquez sur "Copier" pour mettre à jour votre Google Sheet.
+                    </small>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="modal-btn cancel" onclick="closeNoteModal()">Annuler</button>
+                <button class="modal-btn" onclick="copyNoteForGsheet()" style="background: #4285f4; display: none;" id="copyNoteGsheetBtn">
+                    <i class="fas fa-copy"></i> Copier
+                </button>
                 <button class="modal-btn save-notes" onclick="saveNote()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SEQUENCE EDIT MODAL ==================== -->
+    <div class="modal-overlay" id="sequenceEditModal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Éditer la séquence</h2>
+                <button class="modal-close" onclick="closeSequenceEditModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Timing</label>
+                    <input type="text" id="editSeqTiming" placeholder="Ex: 09:00">
+                </div>
+                <div class="form-group">
+                    <label>Titre *</label>
+                    <input type="text" id="editSeqTitle" placeholder="Ex: Accueil des participants">
+                </div>
+                <div class="form-group">
+                    <label>Personnes / Intervenants</label>
+                    <input type="text" id="editSeqPeople" placeholder="Ex: Jean Dupont, Marie Martin">
+                </div>
+                <div class="form-group">
+                    <label>Sous-titre (question_text)</label>
+                    <input type="text" id="editSeqSubtitle" placeholder="Ex: Introduction">
+                </div>
+                <div class="form-group">
+                    <label>Contenu principal (prompteur)</label>
+                    <textarea id="editSeqContent" placeholder="Le texte qui s'affichera dans le prompteur..." style="min-height: 200px;"></textarea>
+                </div>
+                <div class="gsheet-sync-info" id="gsheetSyncInfo" style="display:none; margin-top: 15px; padding: 12px; background: rgba(66,133,244,0.1); border-radius: 8px; border-left: 3px solid #4285f4;">
+                    <small style="color: #4285f4;">
+                        <i class="fab fa-google-drive"></i> <strong>Synchronisation Google Sheets</strong><br>
+                        Les modifications seront sauvegardées localement. Pour mettre à jour votre Google Sheet, cliquez sur "Copier pour Google Sheets" après avoir enregistré.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closeSequenceEditModal()">Annuler</button>
+                <button class="modal-btn" onclick="copySequenceForGsheet()" style="background: #4285f4;" id="copyGsheetBtn">
+                    <i class="fas fa-copy"></i> Copier
+                </button>
+                <button class="modal-btn save" onclick="saveSequenceEdit()">Enregistrer</button>
             </div>
         </div>
     </div>
@@ -2015,23 +2132,94 @@
                 </div>
             `;
             notebooks.forEach(nb => {
+                const isGsheet = nb.sourceType === 'gsheet';
+                const iconClass = isGsheet ? 'fab fa-google-drive' : 'fas fa-book';
+                const metaText = isGsheet ? `${nb.notes?.length || 0} notes • Google Sheets` : `${nb.notes?.length || 0} notes`;
+                
                 html += `
                     <div class="notebook-card" onclick="openNotebook('${nb.id}')">
                         <div class="notebook-card-info">
-                            <div class="notebook-card-icon"><i class="fas fa-book"></i></div>
+                            <div class="notebook-card-icon" ${isGsheet ? 'style="background: linear-gradient(135deg, var(--notes-color), #4285f4);"' : ''}>
+                                <i class="${iconClass}"></i>
+                            </div>
                             <div>
                                 <div class="notebook-card-name">${nb.name}</div>
-                                <div class="notebook-card-meta">${nb.notes?.length || 0} notes</div>
+                                <div class="notebook-card-meta">${metaText}</div>
                             </div>
                         </div>
-                        <button class="notebook-delete-btn" onclick="event.stopPropagation(); deleteNotebook('${nb.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <div class="notebook-card-actions">
+                            ${isGsheet ? `<button class="event-refresh-btn" onclick="event.stopPropagation(); refreshNotebook('${nb.id}')" title="Rafraîchir depuis Google Sheets">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>` : ''}
+                            <button class="notebook-delete-btn" onclick="event.stopPropagation(); deleteNotebook('${nb.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             });
             grid.innerHTML = html;
         }
+
+        // Refresh notebook from Google Sheets
+        window.refreshNotebook = async (id) => {
+            const notebookData = notebooks.find(n => n.id === id);
+            if (!notebookData || !notebookData.sourceUrl) {
+                return showToast('Pas de source Google Sheets');
+            }
+            
+            showToast('Chargement...');
+            
+            try {
+                const csvText = await fetchGoogleSheetCSV(notebookData.sourceUrl);
+                
+                // Parse CSV
+                const parsed = Papa.parse(csvText, { 
+                    header: true, 
+                    skipEmptyLines: true, 
+                    transformHeader: h => h.trim().toLowerCase() 
+                });
+                
+                // Delete existing notes
+                const existingNotes = await getDocs(collection(db, "notebooks", id, "notes"));
+                for (const noteDoc of existingNotes.docs) {
+                    await deleteDoc(doc(db, "notebooks", id, "notes", noteDoc.id));
+                }
+                
+                // Create new notes
+                let count = 0;
+                for (const row of parsed.data) {
+                    const title = (row.title || '').trim();
+                    const content = (row.content || '').trim();
+                    if (title || content) {
+                        await addDoc(collection(db, "notebooks", id, "notes"), { 
+                            title: title || 'Sans titre', 
+                            content, 
+                            createdAt: new Date() 
+                        });
+                        count++;
+                    }
+                }
+                
+                // Update lastRefresh timestamp
+                await updateDoc(doc(db, "notebooks", id), { lastRefresh: new Date() });
+                
+                // Reload notebook data
+                const notesSnap = await getDocs(collection(db, "notebooks", id, "notes"));
+                notebookData.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
+                
+                showToast(`Rafraîchi ! ${count} notes`);
+                
+                // If we're viewing this notebook, refresh the view
+                if (currentNotebook && currentNotebook.id === id) {
+                    currentNotebook.notes = notebookData.notes;
+                    renderNotesList();
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Erreur: ' + e.message);
+            }
+        };
 
         window.openCreateNotebookModal = () => {
             document.getElementById('createNotebookModal').classList.add('active');
@@ -2113,9 +2301,42 @@
                 document.getElementById('noteTitle').value = note.title;
                 document.getElementById('noteContent').value = note.content;
             }
+            
+            // Show/hide Google Sheets sync info
+            const syncInfo = document.getElementById('noteGsheetSyncInfo');
+            const copyBtn = document.getElementById('copyNoteGsheetBtn');
+            if (currentNotebook && currentNotebook.sourceType === 'gsheet') {
+                syncInfo.style.display = 'block';
+                copyBtn.style.display = 'inline-flex';
+            } else {
+                syncInfo.style.display = 'none';
+                copyBtn.style.display = 'none';
+            }
+            
             document.getElementById('noteModal').classList.add('active');
         };
         window.closeNoteModal = () => document.getElementById('noteModal').classList.remove('active');
+
+        window.copyNoteForGsheet = () => {
+            const title = document.getElementById('noteTitle').value.trim();
+            const content = document.getElementById('noteContent').value.trim();
+            
+            // Create CSV row (tab-separated for easy paste into Google Sheets)
+            const row = [title, content].join('\t');
+            
+            navigator.clipboard.writeText(row).then(() => {
+                showToast('📋 Copié ! Collez dans votre Google Sheet');
+            }).catch(e => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = row;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('📋 Copié ! Collez dans votre Google Sheet');
+            });
+        };
 
         window.saveNote = async () => {
             const title = document.getElementById('noteTitle').value.trim();
@@ -2287,7 +2508,148 @@
             if (seq) await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), { note: e.target.value });
         });
 
-        window.toggleEditMode = () => showToast('Mode édition à venir');
+        // ==================== SEQUENCE EDIT MODE ====================
+        window.toggleEditMode = () => {
+            if (!currentEvent || !currentEvent.sequences || !currentEvent.sequences[currentSequenceIndex]) {
+                return showToast('Aucune séquence sélectionnée');
+            }
+            
+            const seq = currentEvent.sequences[currentSequenceIndex];
+            
+            // Populate the edit form
+            document.getElementById('editSeqTiming').value = seq.timing || '';
+            document.getElementById('editSeqTitle').value = seq.title || '';
+            document.getElementById('editSeqPeople').value = seq.people || '';
+            
+            // Get first question data if exists
+            const firstQuestion = seq.questions && seq.questions[0] ? seq.questions[0] : {};
+            document.getElementById('editSeqSubtitle').value = firstQuestion.text || '';
+            document.getElementById('editSeqContent').value = firstQuestion.content || '';
+            
+            // Show Google Sheets sync info if this event is from Google Sheets
+            const syncInfo = document.getElementById('gsheetSyncInfo');
+            const copyBtn = document.getElementById('copyGsheetBtn');
+            if (currentEvent.sourceType === 'gsheet') {
+                syncInfo.style.display = 'block';
+                copyBtn.style.display = 'inline-flex';
+            } else {
+                syncInfo.style.display = 'none';
+                copyBtn.style.display = 'none';
+            }
+            
+            // Open modal
+            document.getElementById('sequenceEditModal').classList.add('active');
+        };
+
+        window.closeSequenceEditModal = () => {
+            document.getElementById('sequenceEditModal').classList.remove('active');
+        };
+
+        window.saveSequenceEdit = async () => {
+            const timing = document.getElementById('editSeqTiming').value.trim();
+            const title = document.getElementById('editSeqTitle').value.trim();
+            const people = document.getElementById('editSeqPeople').value.trim();
+            const subtitle = document.getElementById('editSeqSubtitle').value.trim();
+            const content = document.getElementById('editSeqContent').value.trim();
+            
+            if (!title) return showToast('Le titre est requis');
+            
+            const seq = currentEvent.sequences[currentSequenceIndex];
+            
+            // Update sequence data
+            const updatedData = {
+                timing,
+                title,
+                people,
+                questions: [{ text: subtitle, content }],
+                validated: seq.validated || false
+            };
+            
+            try {
+                // Save to Firebase
+                await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), updatedData);
+                
+                // Update local data
+                Object.assign(seq, updatedData);
+                
+                // Refresh display
+                renderProgressSidebar();
+                renderCurrentSequence();
+                
+                closeSequenceEditModal();
+                showToast('Séquence mise à jour !');
+            } catch (e) {
+                console.error(e);
+                showToast('Erreur: ' + e.message);
+            }
+        };
+
+        window.copySequenceForGsheet = () => {
+            const timing = document.getElementById('editSeqTiming').value.trim();
+            const title = document.getElementById('editSeqTitle').value.trim();
+            const people = document.getElementById('editSeqPeople').value.trim();
+            const subtitle = document.getElementById('editSeqSubtitle').value.trim();
+            const content = document.getElementById('editSeqContent').value.trim();
+            
+            // Create CSV row (tab-separated for easy paste into Google Sheets)
+            const row = [timing, title, people, subtitle, content].join('\t');
+            
+            navigator.clipboard.writeText(row).then(() => {
+                showToast('📋 Copié ! Collez dans votre Google Sheet');
+            }).catch(e => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = row;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('📋 Copié ! Collez dans votre Google Sheet');
+            });
+        };
+
+        // ==================== TEMPLATE DOWNLOADS ====================
+        window.downloadEventTemplate = () => {
+            const csvContent = `timing,title,people,question_text,question_content
+08:00,Accueil et café,Tous les participants,Bienvenue,Accueil des participants avec café et viennoiseries. Remise des badges.
+08:30,Introduction,Animateur,Présentation de la journée,Bonjour à tous et bienvenue ! Nous allons passer une journée riche en découvertes. Voici le programme...
+09:00,Session 1,Intervenant A,Premier sujet,Contenu détaillé de la première session. Points clés à aborder pendant cette intervention.
+10:30,Pause café,Tous,Networking,Pause de 20 minutes pour le réseautage et les échanges informels.
+10:50,Session 2,Intervenant B,Deuxième sujet,Contenu de la deuxième session avec les éléments importants à présenter.
+12:30,Déjeuner,Tous les participants,Repas,Déjeuner au restaurant partenaire. Tables réservées au nom de l'événement.
+14:00,Atelier pratique,Animateur + Participants,Mise en pratique,Exercices pratiques en petits groupes. Instructions et objectifs de l'atelier.
+15:30,Questions/Réponses,Panel,Échanges avec le public,Session de questions-réponses avec tous les intervenants. Questions préparées et questions du public.
+16:00,Clôture,Animateur,Remerciements et conclusion,Merci à tous pour votre participation ! Résumé des points clés et informations pour la suite.`;
+            
+            downloadCSV(csvContent, 'modele-evenement.csv');
+            showToast('Modèle téléchargé !');
+        };
+
+        window.downloadNotebookTemplate = () => {
+            const csvContent = `title,content
+Bienvenue,"Bienvenue à tous ! Nous sommes ravis de vous accueillir pour cet événement exceptionnel."
+Remerciements sponsors,"Un grand merci à nos sponsors : Entreprise A - Entreprise B - Entreprise C. Sans eux cet événement n'aurait pas été possible."
+Anecdote 1,"Saviez-vous que la première édition de cet événement a eu lieu en 2005 avec seulement 12 participants ? Aujourd'hui nous sommes plus de 500 !"
+Citation inspirante,"Le succès n'est pas final, l'échec n'est pas fatal. C'est le courage de continuer qui compte. - Winston Churchill"
+Blague du jour,"Pourquoi les plongeurs plongent-ils toujours en arrière et jamais en avant ? Parce que sinon ils tomberaient dans le bateau !"
+Chiffre clé,"Cette année nous avons battu notre record avec 847 inscriptions, soit une augmentation de 23% par rapport à l'année dernière."
+Info pratique,"Le buffet sera servi à 12h30 dans la salle principale. Les régimes spéciaux sont disponibles sur demande à l'accueil."
+Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à l'arrière de la salle. Point de rassemblement : parking principal."`;
+            
+            downloadCSV(csvContent, 'modele-bloc-notes.csv');
+            showToast('Modèle téléchargé !');
+        };
+
+        function downloadCSV(content, filename) {
+            const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
 
         // ==================== POPUP ====================
         window.openPopup = () => {
@@ -2591,6 +2953,320 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-database"></i> Importer depuis Airtable';
             }
+        });
+
+        // ==================== HELPER: FETCH GOOGLE SHEET CSV ====================
+        async function fetchGoogleSheetCSV(url) {
+            // Try using Netlify proxy function first (avoids CORS issues)
+            try {
+                console.log('Fetching via proxy:', url);
+                const proxyResponse = await fetch('/.netlify/functions/gsheet-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                
+                const proxyResult = await proxyResponse.json();
+                
+                if (proxyResult.success) {
+                    console.log('Proxy success, CSV length:', proxyResult.csv.length);
+                    return proxyResult.csv;
+                } else {
+                    throw new Error(proxyResult.error || 'Proxy failed');
+                }
+            } catch (proxyError) {
+                console.log('Proxy failed, trying direct fetch...', proxyError);
+                
+                // Fallback: try direct fetch with URL transformation
+                let csvUrl = url;
+                if (url.includes('docs.google.com/spreadsheets')) {
+                    if (url.includes('/d/e/')) {
+                        if (url.includes('/pubhtml')) {
+                            csvUrl = url.replace('/pubhtml', '/pub?output=csv');
+                        } else if (url.includes('/pub') && !url.includes('output=csv')) {
+                            csvUrl = url.includes('?') ? url + '&output=csv' : url + '?output=csv';
+                        }
+                    } else {
+                        const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                        if (match) {
+                            const sheetId = match[1];
+                            const gidMatch = url.match(/gid=(\d+)/);
+                            const gid = gidMatch ? gidMatch[1] : '0';
+                            csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+                        }
+                    }
+                }
+                
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error('Impossible de récupérer le fichier.');
+                return await response.text();
+            }
+        }
+
+        // ==================== NOTEBOOK CSV IMPORT ====================
+        document.getElementById('importNoteCsvBtn').addEventListener('click', async () => {
+            const name = document.getElementById('noteCsvName').value.trim();
+            const file = document.getElementById('noteCsvFile').files[0];
+            if (!name || !file) return showToast('Remplissez tous les champs');
+            
+            const btn = document.getElementById('importNoteCsvBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div>';
+            
+            try {
+                const text = await file.text();
+                await importNotebookCSVData(name, text);
+                document.getElementById('noteCsvName').value = '';
+                document.getElementById('noteCsvFile').value = '';
+            } catch (e) {
+                showToast('Erreur: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-upload"></i> Importer CSV';
+            }
+        });
+
+        // ==================== NOTEBOOK GOOGLE SHEETS IMPORT ====================
+        document.getElementById('importNoteGsheetBtn').addEventListener('click', async () => {
+            const name = document.getElementById('noteGsheetName').value.trim();
+            const url = document.getElementById('noteGsheetUrl').value.trim();
+            if (!name || !url) return showToast('Remplissez tous les champs');
+            
+            const btn = document.getElementById('importNoteGsheetBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div>';
+            
+            try {
+                const csvText = await fetchGoogleSheetCSV(url);
+                await importNotebookCSVData(name, csvText, url);
+                document.getElementById('noteGsheetName').value = '';
+                document.getElementById('noteGsheetUrl').value = '';
+            } catch (e) {
+                console.error(e);
+                showToast('Erreur: ' + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fab fa-google-drive"></i> Importer depuis Google Sheets';
+            }
+        });
+
+        // ==================== COMMON NOTEBOOK CSV PARSER ====================
+        async function importNotebookCSVData(name, csvText, sourceUrl = null) {
+            console.log('=== Notebook CSV Import Debug ===');
+            console.log('CSV text length:', csvText.length);
+            
+            const parsed = Papa.parse(csvText, { 
+                header: true, 
+                skipEmptyLines: true, 
+                transformHeader: h => h.trim().toLowerCase() 
+            });
+            
+            console.log('Parsed rows:', parsed.data.length);
+            console.log('Headers:', parsed.meta.fields);
+            
+            const notebookData = { 
+                name, 
+                owner: currentUser.uid, 
+                createdAt: new Date()
+            };
+            
+            // Store source URL for refresh capability
+            if (sourceUrl) {
+                notebookData.sourceUrl = sourceUrl;
+                notebookData.sourceType = 'gsheet';
+            }
+            
+            const notebookRef = await addDoc(collection(db, "notebooks"), notebookData);
+            console.log('Notebook created with ID:', notebookRef.id);
+            
+            let count = 0;
+            for (const row of parsed.data) {
+                const title = (row.title || '').trim();
+                const content = (row.content || '').trim();
+                if (title || content) {
+                    await addDoc(collection(db, "notebooks", notebookRef.id, "notes"), { 
+                        title: title || 'Sans titre', 
+                        content, 
+                        createdAt: new Date() 
+                    });
+                    count++;
+                }
+            }
+            
+            console.log('Notes created:', count);
+            showToast(`${count} notes importées !`);
+            
+            return notebookRef.id;
+        }
+
+        // ==================== AUTO-SYNC SYSTEM ====================
+        let autoSyncInterval = null;
+        const AUTO_SYNC_DELAY = 30000; // 30 seconds
+
+        function startAutoSync() {
+            if (autoSyncInterval) return; // Already running
+            
+            autoSyncInterval = setInterval(async () => {
+                // Check if we're viewing an event with Google Sheets source
+                if (currentEvent && currentEvent.sourceUrl && document.getElementById('sequencePage').style.display === 'flex') {
+                    console.log('Auto-sync: Checking event updates...');
+                    await silentRefreshEvent(currentEvent.id);
+                }
+                
+                // Check if we're viewing a notebook with Google Sheets source
+                if (currentNotebook && currentNotebook.sourceUrl && 
+                    (document.getElementById('notebookPage').style.display === 'flex' || 
+                     document.getElementById('noteViewPage').style.display === 'flex')) {
+                    console.log('Auto-sync: Checking notebook updates...');
+                    await silentRefreshNotebook(currentNotebook.id);
+                }
+            }, AUTO_SYNC_DELAY);
+            
+            console.log('Auto-sync started (every 30s)');
+        }
+
+        function stopAutoSync() {
+            if (autoSyncInterval) {
+                clearInterval(autoSyncInterval);
+                autoSyncInterval = null;
+                console.log('Auto-sync stopped');
+            }
+        }
+
+        // Silent refresh (no confirmation, just update if changed)
+        async function silentRefreshEvent(id) {
+            const eventData = events.find(e => e.id === id);
+            if (!eventData || !eventData.sourceUrl) return;
+            
+            try {
+                const csvText = await fetchGoogleSheetCSV(eventData.sourceUrl);
+                const parsed = Papa.parse(csvText, { 
+                    header: true, 
+                    skipEmptyLines: true, 
+                    transformHeader: h => h.trim().toLowerCase() 
+                });
+                
+                // Count new sequences
+                const groups = new Map();
+                parsed.data.forEach(row => {
+                    const timing = (row.timing || '').trim();
+                    const title = (row.title || '').trim();
+                    if (!timing && !title) return;
+                    const key = `${timing}|${title}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, { timing, title, people: (row.people || '').trim(), questions: [], validated: false });
+                    }
+                    const qText = (row.question_text || '').trim();
+                    const qContent = (row.question_content || '').trim();
+                    if (qText || qContent) groups.get(key).questions.push({ text: qText, content: qContent });
+                });
+                
+                // Check if count changed
+                const currentCount = eventData.sequences?.length || 0;
+                const newCount = groups.size;
+                
+                if (newCount !== currentCount) {
+                    console.log(`Auto-sync: Event changed (${currentCount} -> ${newCount} sequences)`);
+                    showToast(`🔄 Mise à jour détectée ! ${newCount} séquences`);
+                    
+                    // Delete existing and recreate
+                    const existingSeqs = await getDocs(collection(db, "events", id, "sequences"));
+                    for (const seqDoc of existingSeqs.docs) {
+                        await deleteDoc(doc(db, "events", id, "sequences", seqDoc.id));
+                    }
+                    
+                    for (const seq of groups.values()) {
+                        await addDoc(collection(db, "events", id, "sequences"), seq);
+                    }
+                    
+                    // Reload sequences
+                    const seqSnap = await getDocs(collection(db, "events", id, "sequences"));
+                    eventData.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+                    eventData.sequences.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
+                    
+                    // Update current event if same
+                    if (currentEvent && currentEvent.id === id) {
+                        currentEvent.sequences = eventData.sequences;
+                        renderProgressSidebar();
+                        renderCurrentSequence();
+                    }
+                }
+            } catch (e) {
+                console.error('Auto-sync event error:', e);
+            }
+        }
+
+        async function silentRefreshNotebook(id) {
+            const notebookData = notebooks.find(n => n.id === id);
+            if (!notebookData || !notebookData.sourceUrl) return;
+            
+            try {
+                const csvText = await fetchGoogleSheetCSV(notebookData.sourceUrl);
+                const parsed = Papa.parse(csvText, { 
+                    header: true, 
+                    skipEmptyLines: true, 
+                    transformHeader: h => h.trim().toLowerCase() 
+                });
+                
+                // Count notes
+                let newCount = 0;
+                for (const row of parsed.data) {
+                    const title = (row.title || '').trim();
+                    const content = (row.content || '').trim();
+                    if (title || content) newCount++;
+                }
+                
+                const currentCount = notebookData.notes?.length || 0;
+                
+                if (newCount !== currentCount) {
+                    console.log(`Auto-sync: Notebook changed (${currentCount} -> ${newCount} notes)`);
+                    showToast(`🔄 Mise à jour détectée ! ${newCount} notes`);
+                    
+                    // Delete existing and recreate
+                    const existingNotes = await getDocs(collection(db, "notebooks", id, "notes"));
+                    for (const noteDoc of existingNotes.docs) {
+                        await deleteDoc(doc(db, "notebooks", id, "notes", noteDoc.id));
+                    }
+                    
+                    for (const row of parsed.data) {
+                        const title = (row.title || '').trim();
+                        const content = (row.content || '').trim();
+                        if (title || content) {
+                            await addDoc(collection(db, "notebooks", id, "notes"), { 
+                                title: title || 'Sans titre', 
+                                content, 
+                                createdAt: new Date() 
+                            });
+                        }
+                    }
+                    
+                    // Reload notes
+                    const notesSnap = await getDocs(collection(db, "notebooks", id, "notes"));
+                    notebookData.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
+                    
+                    // Update current notebook if same
+                    if (currentNotebook && currentNotebook.id === id) {
+                        currentNotebook.notes = notebookData.notes;
+                        renderNotesList();
+                    }
+                }
+            } catch (e) {
+                console.error('Auto-sync notebook error:', e);
+            }
+        }
+
+        // Start auto-sync when app loads
+        startAutoSync();
+
+        // Handle tab imports for notebooks
+        document.querySelectorAll('#notesMode .import-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('#notesMode .import-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('#notesMode .import-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                const tabName = tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1);
+                document.getElementById('import' + tabName).classList.add('active');
+            });
         });
 
         function showToast(msg) {
