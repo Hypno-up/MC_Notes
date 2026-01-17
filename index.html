@@ -1431,13 +1431,16 @@
                 </div>
                 <div class="import-content" id="importGsheet">
                     <input type="text" class="import-input" id="gsheetEventName" placeholder="Nom de l'événement">
-                    <input type="text" class="import-input" id="gsheetUrl" placeholder="URL Google Sheets (publiée en CSV)">
+                    <input type="text" class="import-input" id="gsheetUrl" placeholder="URL Google Sheets">
                     <div class="gsheet-help">
-                        <small style="color: var(--text-secondary); display: block; margin-bottom: 10px;">
-                            📋 Comment obtenir l'URL :<br>
-                            1. Google Sheets → Fichier → Partager → Publier sur le web<br>
-                            2. Choisir "Valeurs séparées par des virgules (.csv)"<br>
-                            3. Copier le lien généré
+                        <small style="color: var(--text-secondary); display: block; margin-bottom: 10px; line-height: 1.6;">
+                            📋 <strong>Comment obtenir l'URL :</strong><br>
+                            1. Dans Google Sheets → <strong>Fichier</strong> → <strong>Partager</strong> → <strong>Publier sur le web</strong><br>
+                            2. Onglet "Lien" → Sélectionner votre feuille<br>
+                            3. Choisir "<strong>Valeurs séparées par des virgules (.csv)</strong>"<br>
+                            4. Cliquer "Publier" puis copier le lien<br>
+                            <br>
+                            💡 <em>Vous pouvez aussi coller l'URL de la page /pubhtml</em>
                         </small>
                     </div>
                     <button class="import-btn" id="importGsheetBtn" style="background: #4285f4;">
@@ -2428,28 +2431,59 @@
             btn.innerHTML = '<div class="loading-spinner"></div>';
             
             try {
-                // Convert Google Sheets URL to CSV export URL if needed
-                if (url.includes('docs.google.com/spreadsheets')) {
-                    // Extract spreadsheet ID
-                    const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                    if (match) {
-                        const sheetId = match[1];
-                        // Check if there's a gid parameter
-                        const gidMatch = url.match(/gid=(\d+)/);
-                        const gid = gidMatch ? gidMatch[1] : '0';
-                        url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+                let csvText;
+                
+                // Try using Netlify proxy function first (avoids CORS issues)
+                try {
+                    console.log('Trying proxy function...');
+                    const proxyResponse = await fetch('/.netlify/functions/gsheet-proxy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url })
+                    });
+                    
+                    const proxyResult = await proxyResponse.json();
+                    
+                    if (proxyResult.success) {
+                        csvText = proxyResult.csv;
+                        url = proxyResult.url; // Use the transformed URL for refresh
+                        console.log('Proxy success, CSV length:', csvText.length);
+                    } else {
+                        throw new Error(proxyResult.error || 'Proxy failed');
                     }
+                } catch (proxyError) {
+                    console.log('Proxy failed, trying direct fetch...', proxyError);
+                    
+                    // Fallback: try direct fetch with URL transformation
+                    if (url.includes('docs.google.com/spreadsheets')) {
+                        if (url.includes('/d/e/')) {
+                            if (url.includes('/pubhtml')) {
+                                url = url.replace('/pubhtml', '/pub?output=csv');
+                            } else if (url.includes('/pub') && !url.includes('output=csv')) {
+                                url = url.includes('?') ? url + '&output=csv' : url + '?output=csv';
+                            }
+                        } else {
+                            const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+                            if (match) {
+                                const sheetId = match[1];
+                                const gidMatch = url.match(/gid=(\d+)/);
+                                const gid = gidMatch ? gidMatch[1] : '0';
+                                url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+                            }
+                        }
+                    }
+                    
+                    console.log('Direct fetch URL:', url);
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Impossible de récupérer le fichier. Vérifiez que la feuille est publiée au format CSV.');
+                    csvText = await response.text();
                 }
                 
-                // Fetch the CSV data
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('Impossible de récupérer le fichier. Vérifiez que la feuille est publiée.');
-                const text = await response.text();
+                console.log('CSV received, length:', csvText.length);
                 
-                await importCSVData(name, text, url);
+                await importCSVData(name, csvText, url);
                 document.getElementById('gsheetEventName').value = '';
                 document.getElementById('gsheetUrl').value = '';
-                showToast('Import réussi !');
             } catch (e) {
                 console.error(e);
                 showToast('Erreur: ' + e.message);
@@ -2461,11 +2495,19 @@
 
         // ==================== COMMON CSV PARSER ====================
         async function importCSVData(name, csvText, sourceUrl = null) {
+            console.log('=== CSV Import Debug ===');
+            console.log('CSV text length:', csvText.length);
+            console.log('First 500 chars:', csvText.substring(0, 500));
+            
             const parsed = Papa.parse(csvText, { 
                 header: true, 
                 skipEmptyLines: true, 
                 transformHeader: h => h.trim().toLowerCase() 
             });
+            
+            console.log('Parsed rows:', parsed.data.length);
+            console.log('Headers:', parsed.meta.fields);
+            console.log('First row:', parsed.data[0]);
             
             if (parsed.errors.length > 0) {
                 console.warn('CSV parsing warnings:', parsed.errors);
@@ -2484,12 +2526,16 @@
             }
             
             const eventRef = await addDoc(collection(db, "events"), eventData);
+            console.log('Event created with ID:', eventRef.id);
             
             const groups = new Map();
-            parsed.data.forEach(row => {
+            parsed.data.forEach((row, index) => {
                 const timing = (row.timing || '').trim();
                 const title = (row.title || '').trim();
-                if (!timing && !title) return;
+                if (!timing && !title) {
+                    console.log('Skipping row', index, '- no timing/title');
+                    return;
+                }
                 const key = `${timing}|${title}`;
                 if (!groups.has(key)) {
                     groups.set(key, { 
@@ -2507,9 +2553,16 @@
                 }
             });
             
+            console.log('Total groups/sequences to create:', groups.size);
+            
+            let created = 0;
             for (const seq of groups.values()) {
                 await addDoc(collection(db, "events", eventRef.id, "sequences"), seq);
+                created++;
             }
+            
+            console.log('Sequences created:', created);
+            showToast(`${created} séquences importées !`);
             
             return eventRef.id;
         }
