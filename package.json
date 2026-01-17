@@ -1,0 +1,12 @@
+{
+  "name": "mcnote-v2",
+  "version": "2.0.0",
+  "description": "MCNote V2 - Gestionnaire d'événements professionnel",
+  "scripts": {
+    "build": "echo 'No build needed'"
+  },
+  "dependencies": {
+    "airtable": "^0.12.2",
+    "firebase-admin": "^11.11.0"
+  }
+}
