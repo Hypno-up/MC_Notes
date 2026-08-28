@@ -1,0 +1,11 @@
+{
+  "appId": "app.mcnote.v3",
+  "appName": "MC Note",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0f172a"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
