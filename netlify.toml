@@ -1,5 +1,10 @@
+# Le dépôt contient aussi le projet Android (android/, resources/), qui n'a rien
+# à faire en ligne. On publie donc `www/`, construit par `npm run build:www` —
+# exactement le même dossier que celui embarqué dans l'APK, ce qui garantit que
+# le web et l'application servent le même code.
 [build]
-  publish = "."
+  command = "npm run build:www"
+  publish = "www"
   functions = "netlify/functions"
 
 [build.environment]
