@@ -47,9 +47,12 @@ exports.handler = async (event) => {
             const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
             if (match) {
                 const sheetId = match[1];
+                // Ne jamais forcer gid=0 : cet onglet n'existe pas dans toutes les
+                // feuilles (il disparait des que le premier onglet est recree), et
+                // Google repond alors 400. Sans gid, il exporte le premier onglet.
                 const gidMatch = url.match(/gid=(\d+)/);
-                const gid = gidMatch ? gidMatch[1] : '0';
-                csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+                csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
+                    + (gidMatch ? `&gid=${gidMatch[1]}` : '');
             }
         }
 
