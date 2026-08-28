@@ -1993,8 +1993,13 @@
                         liste.push(data);
                     }
                 } catch (e) {
+                    // Une lecture a échoué : `liste` est incomplète. La publier
+                    // ferait disparaître des éléments bien présents en base, ce qui
+                    // ressemble à s'y méprendre à une perte de données. On garde
+                    // donc l'affichage précédent et on le signale.
                     console.error('loadEvents:', e);
-                    showToast('Lecture partielle : ' + (e.code || e.message));
+                    showToast('Lecture incomplète, affichage conservé : ' + (e.code || e.message));
+                    return;
                 }
                 if (generation !== generationEvents) return; // un instantané plus récent a pris la main
                 events = liste;
@@ -2187,10 +2192,15 @@
                         liste.push(data);
                     }
                 } catch (e) {
+                    // Une lecture a échoué : `liste` est incomplète. La publier
+                    // ferait disparaître des éléments bien présents en base, ce qui
+                    // ressemble à s'y méprendre à une perte de données. On garde
+                    // donc l'affichage précédent et on le signale.
                     console.error('loadNotebooks:', e);
-                    showToast('Lecture partielle : ' + (e.code || e.message));
+                    showToast('Lecture incomplète, affichage conservé : ' + (e.code || e.message));
+                    return;
                 }
-                if (generation !== generationNotebooks) return;
+                if (generation !== generationNotebooks) return; // un instantané plus récent a pris la main
                 notebooks = liste;
                 renderNotebooksGrid();
             }, (e) => {
