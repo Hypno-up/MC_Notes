@@ -1,135 +1,127 @@
-# MCNote V2 - Guide de Déploiement sur Netlify
+# MCNote V3
 
-## 📁 Structure des fichiers
+Conducteurs d'événements et bloc-notes pour animateurs, avec prompteur intégré.
+Web (Netlify) + application Android (Capacitor).
+
+- **Web** : https://mcnote.netlify.app
+- **Fonctionnalités détaillées** : [FONCTIONNALITES.md](FONCTIONNALITES.md)
+
+---
+
+## Architecture
 
 ```
-mcnote-v2-firebase/
-├── index.html              # Application principale
-├── package.json            # Dépendances Node.js
-├── netlify.toml            # Configuration Netlify
-├── README.md               # Ce fichier
-└── netlify/
-    └── functions/
-        └── airtable-import-2.js   # Fonction serverless Airtable
+index.html                        Toute l'application (HTML + CSS + JS module)
+netlify/functions/
+  gsheet-proxy.js                 Récupère une feuille Google en CSV (contourne le CORS)
+  airtable-import-2.js            Importe une base Airtable dans Firestore
+capacitor.config.json             Configuration de l'app Android
+android/                          Projet Android généré par Capacitor
+resources/icon.png, splash.png    Sources des icônes (1024 et 2732 px)
+www/                              Copie de index.html embarquée dans l'APK (généré, non versionné)
 ```
 
-## 🚀 Étapes de déploiement
+**Backend** : Firebase Auth (e-mail/mot de passe) + Firestore.
+Collections `events/{id}/sequences` et `notebooks/{id}/notes`.
 
-### 1. Préparer le repository GitHub
+**Aucune étape de build côté web** : `index.html` est servi tel quel.
+
+---
+
+## Développement
 
 ```bash
-# Si tu as déjà un repo, remplace les fichiers existants
-# Sinon, crée un nouveau repo
-
-cd ton-repo-mcnote
-# Copie tous les fichiers de mcnote-v2-firebase ici
-
-git add .
-git commit -m "MCNote V2 - Nouvelle interface mobile"
-git push origin main
+npm install
+npx serve .          # ou tout serveur HTTP statique — les modules ES exigent http://
 ```
 
-### 2. Configurer Netlify
+⚠️ Servi depuis `localhost`, l'app se considère « native » et appelle les fonctions
+serverless de production (`https://mcnote.netlify.app`). C'est voulu : cela reproduit
+exactement l'environnement de l'APK.
 
-1. **Connecter le repo** : Va sur [Netlify](https://app.netlify.com) → "Add new site" → "Import an existing project" → GitHub
+---
 
-2. **Paramètres de build** :
-   - Build command: `npm install` (ou laisser vide)
-   - Publish directory: `.`
-   - Functions directory: `netlify/functions`
+## Construire l'APK Android
 
-### 3. Configurer les variables d'environnement
-
-Dans Netlify → Site settings → Environment variables, ajoute :
-
-| Variable | Description |
-|----------|-------------|
-| `AIRTABLE_API_KEY` | Ta clé API Airtable (Personal Access Token) |
-| `AIRTABLE_BASE_ID` | L'ID de ta base Airtable (ex: `appXXXXXXXXXXXX`) |
-| `AIRTABLE_TABLE_NAME` | Nom de la table (ex: `Timeline`) |
-| `FIREBASE_SERVICE_ACCOUNT` | Le JSON complet du compte de service Firebase |
-
-#### Comment obtenir FIREBASE_SERVICE_ACCOUNT :
-
-1. Va dans [Firebase Console](https://console.firebase.google.com)
-2. Paramètres du projet → Comptes de service
-3. "Générer une nouvelle clé privée"
-4. Copie **tout le contenu du fichier JSON** dans la variable
-
-⚠️ **Important** : Colle le JSON sur **une seule ligne** (sans retours à la ligne)
-
-### 4. Configurer Firebase (côté client)
-
-Dans Netlify → Site settings → Build & deploy → Build settings → Edit settings
-
-Ajoute dans "Environment" :
-```
-__firebase_config = {"apiKey":"xxx","authDomain":"xxx.firebaseapp.com","projectId":"xxx","storageBucket":"xxx.appspot.com","messagingSenderId":"xxx","appId":"xxx"}
-```
-
-Ou utilise l'injection de script Netlify dans le HTML.
-
-### 5. Déployer
+**Prérequis** — JDK 21 et l'Android SDK en ligne de commande :
 
 ```bash
-git push origin main
-# Netlify déploie automatiquement
+brew install openjdk@21 android-commandlinetools
+sdkmanager "platforms;android-36" "build-tools;35.0.0" "platform-tools"
+echo "sdk.dir=/usr/local/share/android-commandlinetools" > android/local.properties
 ```
 
----
+**Construction :**
 
-## ⚙️ Configuration Firebase requise
-
-### Firestore Rules
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /events/{eventId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.owner;
-      allow create: if request.auth != null;
-      
-      match /sequences/{sequenceId} {
-        allow read, write: if request.auth != null;
-      }
-    }
-  }
-}
+```bash
+npm run apk
 ```
 
-### Authentication
-- Active "Email/Password" dans Firebase Console → Authentication → Sign-in method
+L'APK signé en debug est déposé à la racine : `MCNote-V3.apk`.
+Capacitor 8 exige **Java 21** — le script force `JAVA_HOME` en conséquence.
+
+**Installation** : transférer le fichier sur le téléphone et autoriser
+l'installation depuis des sources inconnues. Ou, appareil branché en USB :
+
+```bash
+adb install -r MCNote-V3.apk
+```
+
+### Le piège à connaître
+
+La page est servie depuis `https://localhost` dans l'application. Tout appel
+**relatif** aux fonctions Netlify viserait alors le téléphone lui-même. D'où la
+constante `API_BASE` dans `index.html` : elle vaut `''` sur le web et l'URL
+absolue du site en natif. **Ne jamais réintroduire de `fetch('/.netlify/...')`.**
 
 ---
 
-## 📱 Fonctionnalités V2
+## Déploiement web
 
-- ✅ **1 séquence par page** - Pas de scroll
-- ✅ **Navigation verticale** - Précédent en haut, Suivant en bas
-- ✅ **Popup texte long** - Bouton "Lire" pour ouvrir
-- ✅ **Prompteur intelligent** - Désactivé si texte < 5 lignes
-- ✅ **Notes rapides** - Sans mode édition requis
-- ✅ **Swipe gestures** - Navigation tactile
-- ✅ **Synchronisation Firebase** - Données en temps réel
-- ✅ **Import Airtable** - Via fonction serverless
+Netlify, publication du répertoire racine, fonctions dans `netlify/functions`.
 
----
+Variables d'environnement à définir dans Netlify → Site settings → Environment :
 
-## 🔧 Résolution de problèmes
+| Variable | Usage |
+|---|---|
+| `AIRTABLE_API_KEY` | Jeton d'accès personnel Airtable |
+| `AIRTABLE_BASE_ID` | Identifiant de la base (`appXXXXXXXX`) |
+| `AIRTABLE_TABLE_NAME` | Nom de la table (défaut : `Timeline`) |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON du compte de service, **sur une seule ligne** |
 
-### "Firebase config not found"
-→ Vérifie que `__firebase_config` est bien injecté dans le HTML ou via Netlify
-
-### "Airtable import failed"
-→ Vérifie les variables d'environnement Netlify
-→ Teste la fonction : `https://ton-site.netlify.app/.netlify/functions/airtable-import-2`
-
-### "Authentication failed"
-→ Vérifie que Email/Password est activé dans Firebase
-→ Vérifie les domaines autorisés dans Firebase → Authentication → Settings
+La configuration Firebase côté client est en clair dans `index.html` : c'est
+normal et sans risque, la sécurité repose sur les règles Firestore.
 
 ---
 
-## 📞 Support
+## Firebase
 
-Pour toute question, vérifie les logs dans Netlify → Functions → airtable-import-2
+**Authentication** → activer « E-mail/Mot de passe ».
+
+**Règles Firestore** — ⚠️ à reprendre, voir la section « Reste à faire » de
+[FONCTIONNALITES.md](FONCTIONNALITES.md). Les règles actuelles laissent tout
+compte authentifié lire les conducteurs des autres utilisateurs.
+
+---
+
+## Formats d'import CSV
+
+**Événement** — `timing,title,people,question_text,question_content`
+Les lignes partageant `timing` + `title` forment une séquence ; chaque ligne y
+ajoute une question.
+
+**Bloc-notes** — `title,content` — une ligne par note.
+
+Les deux modèles sont téléchargeables depuis l'application.
+
+---
+
+## Dépannage
+
+| Symptôme | Cause probable |
+|---|---|
+| Import Google Sheets / Airtable KO dans l'APK | Un `fetch` relatif s'est glissé dans le code — vérifier `API_BASE` |
+| « Firebase config not found » | Bloc `firebaseConfig` absent de `index.html` |
+| `invalid source release: 21` au build | JDK 17 actif — `npm run apk` force Java 21 |
+| Écran noir au lancement de l'APK | `npm run build:www` non exécuté : `www/` vide ou périmé |
+| Données figées | Vérifier le bandeau orange « Hors ligne » en haut de l'écran |
