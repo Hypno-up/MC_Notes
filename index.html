@@ -2106,64 +2106,22 @@
             if (!eventData || !eventData.sourceUrl) {
                 return showToast('Pas de source Google Sheets');
             }
-            
-            if (!confirm('Rafraîchir depuis Google Sheets ? Les modifications locales seront perdues.')) return;
-            
+
+            // Cette fonction appelait fetch(sourceUrl) directement : l'URL stockee
+            // est celle de l'editeur Google (.../edit), qui ne renvoie jamais de CSV
+            // et que le navigateur bloque de toute facon en CORS. Le rafraichissement
+            // manuel ne pouvait donc pas fonctionner. On passe par le meme proxy que
+            // la synchronisation automatique.
+            if (!confirm('Rafraîchir depuis Google Sheets ?\nVos validations et notes rapides sont conservées.')) return;
+
             showToast('Chargement...');
-            
-            try {
-                // Fetch CSV from Google Sheets
-                const response = await fetch(eventData.sourceUrl);
-                if (!response.ok) throw new Error('Impossible de récupérer les données');
-                const csvText = await response.text();
-                
-                // Parse CSV
-                const parsed = Papa.parse(csvText, { 
-                    header: true, 
-                    skipEmptyLines: true, 
-                    transformHeader: h => h.trim().toLowerCase() 
-                });
-                
-                // Delete existing sequences
-                const existingSeqs = await getDocs(collection(db, "events", id, "sequences"));
-                for (const seqDoc of existingSeqs.docs) {
-                    await deleteDoc(doc(db, "events", id, "sequences", seqDoc.id));
-                }
-                
-                // Create new sequences
-                const groups = new Map();
-                parsed.data.forEach(row => {
-                    const timing = (row.timing || '').trim();
-                    const title = (row.title || '').trim();
-                    if (!timing && !title) return;
-                    const key = `${timing}|${title}`;
-                    if (!groups.has(key)) {
-                        groups.set(key, { 
-                            timing, 
-                            title, 
-                            people: (row.people || '').trim(), 
-                            questions: [], 
-                            validated: false 
-                        });
-                    }
-                    const qText = (row.question_text || '').trim();
-                    const qContent = (row.question_content || '').trim();
-                    if (qText || qContent) {
-                        groups.get(key).questions.push({ text: qText, content: qContent });
-                    }
-                });
-                
-                for (const seq of groups.values()) {
-                    await addDoc(collection(db, "events", id, "sequences"), seq);
-                }
-                
-                // Update lastRefresh timestamp
-                await updateDoc(doc(db, "events", id), { lastRefresh: new Date() });
-                
-                showToast(`Rafraîchi ! ${groups.size} séquences`);
-            } catch (e) {
-                console.error(e);
-                showToast('Erreur: ' + e.message);
+            const bilan = await synchroniserEvenement(id, true);
+            if (!bilan) return;
+
+            if (!bilan.added && !bilan.updated && !bilan.removed) {
+                showToast(`Déjà à jour — ${bilan.total} séquences`);
+            } else {
+                showToast(`Rafraîchi : ${bilan.added} ajout(s), ${bilan.updated} modif., ${bilan.removed} suppr.`);
             }
         };
 
@@ -3328,10 +3286,17 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             return notes;
         }
 
-        async function silentRefreshEvent(id) {
+        // Rapprochement d'un evenement avec sa feuille source. Renvoie le bilan
+        // des modifications, ou null si rien n'a change. `remonterErreur` sert a
+        // l'appel manuel, qui doit afficher la cause d'un echec ; la sync
+        // automatique, elle, echoue en silence.
+        async function synchroniserEvenement(id, remonterErreur = false) {
             const eventData = events.find(e => e.id === id);
-            if (!eventData || !eventData.sourceUrl) return;
-            if (!navigator.onLine) return;
+            if (!eventData || !eventData.sourceUrl) return null;
+            if (!navigator.onLine) {
+                if (remonterErreur) showToast('Hors ligne : synchronisation impossible');
+                return null;
+            }
 
             try {
                 const groups = parseSheetSequences(await fetchGoogleSheetCSV(eventData.sourceUrl));
@@ -3371,11 +3336,9 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     }
                 }
 
-                if (!added && !updated && !removed) return;
-
                 existing.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
                 eventData.sequences = existing;
-                showToast(`🔄 Conducteur mis à jour (${added} ajout(s), ${updated} modif., ${removed} suppr.)`);
+                await updateDoc(doc(db, "events", id), { lastRefresh: new Date() });
 
                 if (currentEvent && currentEvent.id === id) {
                     currentEvent.sequences = existing;
@@ -3383,8 +3346,19 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     renderProgressSidebar();
                     renderCurrentSequence();
                 }
+                return { added, updated, removed, total: existing.length };
             } catch (e) {
-                console.error('Auto-sync event error:', e);
+                console.error('Synchronisation evenement :', e);
+                if (remonterErreur) showToast('Échec : ' + (e.code || e.message));
+                return null;
+            }
+        }
+
+        // Sync automatique : ne parle que s'il y a du nouveau.
+        async function silentRefreshEvent(id) {
+            const bilan = await synchroniserEvenement(id);
+            if (bilan && (bilan.added || bilan.updated || bilan.removed)) {
+                showToast(`🔄 Conducteur mis à jour (${bilan.added} ajout(s), ${bilan.updated} modif., ${bilan.removed} suppr.)`);
             }
         }
 

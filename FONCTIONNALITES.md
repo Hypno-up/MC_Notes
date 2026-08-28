@@ -119,7 +119,9 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 - Détecte les modifications de contenu, pas seulement les ajouts/suppressions
 - Ignorée quand l'appareil est hors ligne
 - Toast récapitulatif : `X ajout(s), Y modif., Z suppr.`
-- Rafraîchissement manuel disponible sur chaque carte
+- **Rafraîchissement manuel** sur chaque carte — passe par le même proxy et la
+  même fusion non destructive que la synchronisation automatique. Il appelait
+  auparavant l'URL `/edit` du Sheet en direct, ce qui ne pouvait pas fonctionner
 
 ---
 
@@ -156,6 +158,7 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
       `timing` alphabétique, pour corriger les événements multi-jours
 - [ ] Recherche dans les séquences / notes
 - [ ] Horodatage visible de la dernière synchro
+- [ ] Pouvoir changer la feuille source d'un événement depuis l'app
 
 ### Améliorations souhaitables
 - [ ] Export PDF du conducteur
