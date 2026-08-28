@@ -47,6 +47,12 @@ Onglets **Événements** / **Bloc-notes**. Chaque mode a sa grille de cartes et 
 Les lignes partageant `timing`+`title` sont regroupées en une séquence ; chaque ligne ajoute une question.
 Modèle téléchargeable : `downloadEventTemplate()`.
 
+**Mise en page du contenu.** Les cellules acceptent les retours à la ligne
+(Alt+Entrée dans Google Sheets) : ils sont conservés par l'export CSV, par
+l'import et à l'affichage. Une puce `•` en début de ligne suffit à obtenir une
+liste lisible. C'est la façon recommandée de présenter une liste de partenaires,
+de clubs ou de contacts.
+
 > ⚠️ **Événements sur plusieurs jours.** Les séquences sont triées par ordre
 > alphabétique sur `timing`. Sur une seule journée le résultat est chronologique,
 > mais sur plusieurs jours l'ordre est faux : `05:30` du mercredi passe avant
@@ -74,6 +80,9 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 - **Contenu séquence** : horaire, titre, intervenants, liste des questions
 - **Validation** (`toggleValidation`, touche `v`) — la séquence passe en style « faite », le compteur d'accueil se met à jour
 - **Note rapide** — champ toujours actif sous la séquence, sauvegarde directe en Firestore sans mode édition
+- **Zone de contenu défilante** — au-delà de la hauteur visible, un dégradé et
+  une pastille « ▼ suite » signalent qu'il reste du texte, et le bouton « Lire »
+  se met en avant. Auparavant le texte était coupé en silence
 - **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran
 - **Prompteur** (voir §6)
 - **Mode édition** (`toggleEditMode`) — modifier horaire, titre, intervenants, questions ; ajout/suppression de séquence

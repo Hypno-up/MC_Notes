@@ -638,23 +638,66 @@
             transition: all 0.3s;
         }
 
+        /* La zone de contenu etait en overflow:hidden : au-dela de ~13 lignes le
+           texte etait coupe sans aucun signe. Sur scene, l'animateur ne pouvait
+           pas savoir qu'il manquait quelque chose. Elle defile desormais, et un
+           degrade + une pastille signalent qu'il reste du contenu. */
+        .content-zone {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+        }
+
         .content-text {
             flex: 1;
-            overflow: hidden;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
             font-size: 0.95rem;
             line-height: 1.6;
             white-space: pre-wrap;
         }
 
-        .content-truncated::after {
+        .content-text::-webkit-scrollbar { width: 4px; }
+        .content-text::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.28);
+            border-radius: 2px;
+        }
+
+        .content-zone.a-suite::after {
             content: '';
             position: absolute;
-            bottom: 180px;
-            left: 0;
-            right: 0;
-            height: 50px;
+            left: 0; right: 0; bottom: 0;
+            height: 38px;
             background: linear-gradient(transparent, var(--bg-card));
             pointer-events: none;
+        }
+
+        .suite-badge {
+            position: absolute;
+            right: 6px;
+            bottom: 6px;
+            background: var(--warning);
+            color: #1a1a2e;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .content-zone.a-suite .suite-badge { opacity: 1; }
+
+        .action-icon-btn.expand-btn.signale {
+            animation: pulseLire 1.8s ease-in-out infinite;
+        }
+
+        @keyframes pulseLire {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }
+            50%      { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
         }
 
         /* Quick Note */
@@ -1545,7 +1588,10 @@
             </div>
 
             <div class="sequence-content">
-                <div class="content-text" id="contentText"></div>
+                <div class="content-zone" id="contentZone">
+                    <div class="content-text" id="contentText"></div>
+                    <div class="suite-badge">▼ suite</div>
+                </div>
 
                 <div class="quick-note-section">
                     <textarea class="quick-note-input" id="quickNoteInput" placeholder="📝 Note rapide..."></textarea>
@@ -2562,6 +2608,8 @@
                 if (q.content) content += q.content + '\n\n';
             });
             document.getElementById('contentText').textContent = content.trim();
+            document.getElementById('contentText').scrollTop = 0;
+            majIndicateurSuite();
             document.getElementById('quickNoteInput').value = seq.note || '';
 
             const btn = document.getElementById('validateBtn');
@@ -2595,6 +2643,24 @@
             }
             renderProgressSidebar();
         }
+
+        // Signale qu'il reste du contenu sous la zone visible, et efface le
+        // signal des que l'animateur a fait defiler jusqu'en bas.
+        function majIndicateurSuite() {
+            const zone = document.getElementById('contentZone');
+            const texte = document.getElementById('contentText');
+            const lire = document.getElementById('expandBtn');
+            if (!zone || !texte) return;
+            // Calcul synchrone : lire scrollHeight force deja le recalcul de la
+            // mise en page. Passer par requestAnimationFrame rendrait l'indicateur
+            // dependant du rafraichissement, qui est suspendu quand l'application
+            // est en arriere-plan — au retour a l'ecran, le repere serait faux.
+            const reste = texte.scrollHeight - texte.scrollTop - texte.clientHeight;
+            zone.classList.toggle('a-suite', reste > 4);
+            if (lire) lire.classList.toggle('signale', texte.scrollHeight - texte.clientHeight > 4);
+        }
+
+        document.getElementById('contentText').addEventListener('scroll', majIndicateurSuite);
 
         window.goToPrevious = () => { if (currentSequenceIndex > 0) { currentSequenceIndex--; renderCurrentSequence(); } };
         window.goToNext = () => { if (currentSequenceIndex < currentEvent.sequences.length - 1) { currentSequenceIndex++; renderCurrentSequence(); } };
