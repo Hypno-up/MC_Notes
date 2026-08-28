@@ -17,7 +17,9 @@ netlify/functions/
 capacitor.config.json             Configuration de l'app Android
 android/                          Projet Android généré par Capacitor
 resources/icon.png, splash.png    Sources des icônes (1024 et 2732 px)
-www/                              Copie de index.html embarquée dans l'APK (généré, non versionné)
+templates/*.csv                   Modèles d'import, identiques à ceux de l'app
+MCNote-V3.apk                     Dernier APK construit, prêt à installer
+www/                              Copie de index.html publiée et embarquée (généré, non versionné)
 ```
 
 **Backend** : Firebase Auth (e-mail/mot de passe) + Firestore.
@@ -59,6 +61,9 @@ npm run apk
 L'APK signé en debug est déposé à la racine : `MCNote-V3.apk`.
 Capacitor 8 exige **Java 21** — le script force `JAVA_HOME` en conséquence.
 
+Un APK prêt à l'emploi est déjà versionné à la racine — pense à le mettre à jour
+(`git add MCNote-V3.apk`) après toute modification de `index.html`.
+
 **Installation** : transférer le fichier sur le téléphone et autoriser
 l'installation depuis des sources inconnues. Ou, appareil branché en USB :
 
@@ -77,7 +82,9 @@ absolue du site en natif. **Ne jamais réintroduire de `fetch('/.netlify/...')`.
 
 ## Déploiement web
 
-Netlify, publication du répertoire racine, fonctions dans `netlify/functions`.
+Netlify construit `www/` via `npm run build:www` et le publie ; les fonctions
+restent dans `netlify/functions`. Le site et l'APK servent donc exactement le
+même `index.html`. Tout push sur `main` déclenche un déploiement.
 
 **Variables d'environnement requises :**
 
@@ -107,7 +114,8 @@ ajoute une question.
 
 **Bloc-notes** — `title,content` — une ligne par note.
 
-Les deux modèles sont téléchargeables depuis l'application.
+Les deux modèles sont téléchargeables depuis l'application et versionnés dans
+`templates/`.
 
 ---
 
