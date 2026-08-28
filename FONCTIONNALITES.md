@@ -1,0 +1,146 @@
+# MCNote V3 — Inventaire fonctionnel complet
+
+État au 28/08/2026, après correctifs P0. Source unique : `index.html` (~3 400 lignes).
+
+---
+
+## 1. Authentification
+
+| Fonction | Détail | Statut |
+|---|---|---|
+| Inscription | E-mail + mot de passe (Firebase Auth) | ✅ |
+| Connexion | E-mail + mot de passe | ✅ |
+| Session persistante | `onAuthStateChanged` — reconnexion auto au lancement | ✅ |
+| Déconnexion | Bouton en-tête accueil | ✅ |
+| Mot de passe oublié | — | ❌ **absent** |
+
+---
+
+## 2. Accueil — deux modes
+
+Onglets **Événements** / **Bloc-notes**. Chaque mode a sa grille de cartes et son bloc d'import.
+
+### Cartes Événement
+- Nom, compteur `validées / total séquences`
+- Badge « Google Sheets » si l'événement a une `sourceUrl`
+- Actions : ouvrir, rafraîchir (`refreshEvent`), supprimer (`deleteEvent`)
+
+### Cartes Bloc-notes
+- Nom (thématique), nombre de notes, badge source
+- Actions : ouvrir, rafraîchir (`refreshNotebook`), supprimer (`deleteNotebook`)
+
+---
+
+## 3. Création & import de contenu
+
+### Événements — 3 sources
+| Source | Mécanisme |
+|---|---|
+| **CSV** | Fichier local, parsé par PapaParse |
+| **Google Sheets** | URL → fonction Netlify `gsheet-proxy` (contourne CORS), repli en fetch direct |
+| **Airtable** | Fonction Netlify `airtable-import-2` (clés côté serveur) |
+| **Vide** | `createEmptyEvent()` — événement à remplir à la main |
+
+**Format CSV attendu :** `timing,title,people,question_text,question_content`
+Les lignes partageant `timing`+`title` sont regroupées en une séquence ; chaque ligne ajoute une question.
+Modèle téléchargeable : `downloadEventTemplate()`.
+
+### Bloc-notes — 2 sources
+| Source | Mécanisme |
+|---|---|
+| **CSV** | Fichier local |
+| **Google Sheets** | Même proxy Netlify |
+| **Vide** | `createNotebook()` |
+
+**Format CSV attendu :** `title,content` — une ligne = une note.
+Modèle téléchargeable : `downloadNotebookTemplate()`.
+
+---
+
+## 4. Écran Conducteur (mode Événement)
+
+Le cœur de l'app : **une séquence par écran, aucun scroll**.
+
+- **Barre latérale de progression** — une pastille par séquence, cliquable (`goToSequence`), état validé visible, infobulle au survol
+- **Navigation** : Précédent (haut) / Suivant (bas), flèches ↑ ↓ au clavier
+- **Contenu séquence** : horaire, titre, intervenants, liste des questions
+- **Validation** (`toggleValidation`, touche `v`) — la séquence passe en style « faite », le compteur d'accueil se met à jour
+- **Note rapide** — champ toujours actif sous la séquence, sauvegarde directe en Firestore sans mode édition
+- **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran
+- **Prompteur** (voir §6)
+- **Mode édition** (`toggleEditMode`) — modifier horaire, titre, intervenants, questions ; ajout/suppression de séquence
+- **Copier pour Google Sheets** (`copySequenceForGsheet`) — met la séquence au presse-papiers au format tabulé, collable directement dans la feuille
+
+---
+
+## 5. Écran Bloc-notes
+
+- Liste des notes du bloc
+- Vue note plein écran (`openNoteView`) avec navigation ← → (boutons + clavier)
+- Création / édition / suppression de note (`openNoteModal`, `saveNote`, `editNote`, `deleteNote`)
+- Prompteur sur une note (`startNotePrompter`)
+- **Copier pour Google Sheets** (`copyNoteForGsheet`)
+
+---
+
+## 6. Prompteur
+
+- Défilement automatique plein écran, superposition sombre
+- Lecture / pause (bouton + **barre d'espace**)
+- **Vitesse réglable** (`adjustPrompterSpeed`) — 5 crans
+- **Taille de texte** (`adjustTextSize`) — 4 tailles : `sm / md / lg / xl`
+- Fermeture par bouton ou **Échap**
+- Désactivé automatiquement si le texte fait moins de 5 lignes
+- Lançable depuis : une séquence, une popup, une note
+
+---
+
+## 7. Synchronisation
+
+- **Auto-sync toutes les 30 s** — uniquement quand un événement ou un bloc-notes issu de Google Sheets est **affiché à l'écran**
+- **Rapprochement non destructif** *(corrigé)* : mise à jour ligne à ligne. Les **validations** et les **notes rapides** saisies en direct ne sont jamais écrasées
+- Détecte les modifications de contenu, pas seulement les ajouts/suppressions
+- Ignorée quand l'appareil est hors ligne
+- Toast récapitulatif : `X ajout(s), Y modif., Z suppr.`
+- Rafraîchissement manuel disponible sur chaque carte
+
+---
+
+## 8. Robustesse terrain *(ajouté ce soir)*
+
+| Fonction | Détail |
+|---|---|
+| **Cache local persistant** | Firestore `persistentLocalCache` — l'app reste consultable sans réseau, les écritures sont rejouées à la reconnexion |
+| **Écran maintenu allumé** | Wake Lock actif sur le conducteur, la vue note et le prompteur ; relâché ailleurs |
+| **Bandeau hors-ligne** | Bandeau orange en haut de l'écran + toasts à la perte/reprise de connexion |
+| **URLs serverless absolues** | Les fonctions Netlify restent joignables depuis l'APK (`API_BASE`) |
+
+---
+
+## 9. Divers
+
+- Toasts de notification (`showToast`)
+- Raccourcis clavier : ↑ ↓ (navigation), `v` (valider), `Espace` (prompteur), ← → (notes), `Échap` (fermer)
+- Téléchargement des modèles CSV
+- Interface verrouillée en portrait, zoom désactivé
+
+---
+
+## 10. Ce qui reste à faire
+
+### Bloquant avant mise en production
+- [ ] **Règles Firestore** — celles du README (`request.auth != null` sur les sous-collections) laissent tout compte lire les conducteurs des autres. À reprendre avec isolation par `owner`.
+- [ ] Ajouter `localhost` aux domaines autorisés dans Firebase → Authentication → Settings (sinon connexion impossible dans l'APK)
+- [ ] Supprimer `indexold.html` du dépôt (96 Ko servis publiquement)
+
+### Fonctionnalités annoncées mais absentes
+- [ ] **Gestes de swipe** — mentionnés dans le README, aucun `touchstart` dans le code V3
+- [ ] Mot de passe oublié
+- [ ] Recherche dans les séquences / notes
+- [ ] Horodatage visible de la dernière synchro
+
+### Améliorations souhaitables
+- [ ] Export PDF du conducteur
+- [ ] Partage d'un événement entre plusieurs utilisateurs
+- [ ] Alertes de dépassement d'horaire (comparaison `timing` / heure réelle)
+- [ ] Sortir le CSS et le JS de `index.html` (fichier unique de 3 400 lignes)

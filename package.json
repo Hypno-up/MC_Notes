@@ -6,7 +6,12 @@
     "build": "echo 'No build needed'"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "airtable": "^0.12.2",
     "firebase-admin": "^11.11.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0"
   }
 }
