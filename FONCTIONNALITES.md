@@ -12,7 +12,7 @@
 | Connexion | E-mail + mot de passe | ✅ |
 | Session persistante | `onAuthStateChanged` — reconnexion auto au lancement | ✅ |
 | Déconnexion | Bouton en-tête accueil | ✅ |
-| Mot de passe oublié | — | ❌ **absent** |
+| Mot de passe oublié | Lien sur l'écran de connexion → e-mail de réinitialisation Firebase | ✅ |
 
 ---
 
@@ -137,7 +137,6 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ### Fonctionnalités annoncées mais absentes
 - [ ] **Gestes de swipe** — mentionnés dans le README, aucun `touchstart` dans le code V3
-- [ ] Mot de passe oublié
 - [ ] Recherche dans les séquences / notes
 - [ ] Horodatage visible de la dernière synchro
 
