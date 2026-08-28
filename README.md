@@ -14,7 +14,6 @@ Web (Netlify) + application Android (Capacitor).
 index.html                        Toute l'application (HTML + CSS + JS module)
 netlify/functions/
   gsheet-proxy.js                 Récupère une feuille Google en CSV (contourne le CORS)
-  airtable-import-2.js            Importe une base Airtable dans Firestore
 capacitor.config.json             Configuration de l'app Android
 android/                          Projet Android généré par Capacitor
 resources/icon.png, splash.png    Sources des icônes (1024 et 2732 px)
@@ -80,14 +79,10 @@ absolue du site en natif. **Ne jamais réintroduire de `fetch('/.netlify/...')`.
 
 Netlify, publication du répertoire racine, fonctions dans `netlify/functions`.
 
-Variables d'environnement à définir dans Netlify → Site settings → Environment :
+**Variables d'environnement requises :**
 
-| Variable | Usage |
-|---|---|
-| `AIRTABLE_API_KEY` | Jeton d'accès personnel Airtable |
-| `AIRTABLE_BASE_ID` | Identifiant de la base (`appXXXXXXXX`) |
-| `AIRTABLE_TABLE_NAME` | Nom de la table (défaut : `Timeline`) |
-| `FIREBASE_SERVICE_ACCOUNT` | JSON du compte de service, **sur une seule ligne** |
+Aucune. Le proxy Google Sheets n'appelle que des feuilles publiées publiquement
+et ne manipule aucun secret.
 
 La configuration Firebase côté client est en clair dans `index.html` : c'est
 normal et sans risque, la sécurité repose sur les règles Firestore.
@@ -120,7 +115,7 @@ Les deux modèles sont téléchargeables depuis l'application.
 
 | Symptôme | Cause probable |
 |---|---|
-| Import Google Sheets / Airtable KO dans l'APK | Un `fetch` relatif s'est glissé dans le code — vérifier `API_BASE` |
+| Import Google Sheets KO dans l'APK | Un `fetch` relatif s'est glissé dans le code — vérifier `API_BASE` |
 | « Firebase config not found » | Bloc `firebaseConfig` absent de `index.html` |
 | `invalid source release: 21` au build | JDK 17 actif — `npm run apk` force Java 21 |
 | Écran noir au lancement de l'APK | `npm run build:www` non exécuté : `www/` vide ou périmé |

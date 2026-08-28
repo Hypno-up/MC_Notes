@@ -1443,7 +1443,6 @@
                 <div class="import-tabs">
                     <button class="import-tab active" data-tab="csv">CSV</button>
                     <button class="import-tab" data-tab="gsheet">Google Sheets</button>
-                    <button class="import-tab" data-tab="airtable">Airtable</button>
                 </div>
                 <div class="import-content active" id="importCsv">
                     <input type="text" class="import-input" id="csvEventName" placeholder="Nom de l'événement">
@@ -1471,12 +1470,6 @@
                     </div>
                     <button class="import-btn" id="importGsheetBtn" style="background: #4285f4;">
                         <i class="fab fa-google-drive"></i> Importer depuis Google Sheets
-                    </button>
-                </div>
-                <div class="import-content" id="importAirtable">
-                    <input type="text" class="import-input" id="airtableEventName" placeholder="Nom de l'événement">
-                    <button class="import-btn" id="importAirtableBtn">
-                        <i class="fas fa-database"></i> Importer depuis Airtable
                     </button>
                 </div>
             </div>
@@ -2943,32 +2936,6 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             
             return eventRef.id;
         }
-
-        // ==================== AIRTABLE IMPORT ====================
-        document.getElementById('importAirtableBtn').addEventListener('click', async () => {
-            const name = document.getElementById('airtableEventName').value.trim();
-            if (!name) return showToast('Entrez un nom');
-            const btn = document.getElementById('importAirtableBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="loading-spinner"></div>';
-            try {
-                const res = await fetch(API_BASE + '/.netlify/functions/airtable-import-2', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.uid, eventName: name })
-                });
-                const result = await res.json();
-                if (result.success) {
-                    document.getElementById('airtableEventName').value = '';
-                    showToast(`${result.sequencesCount} séquences importées !`);
-                } else throw new Error(result.error);
-            } catch (e) {
-                showToast('Erreur: ' + e.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-database"></i> Importer depuis Airtable';
-            }
-        });
 
         // ==================== HELPER: FETCH GOOGLE SHEET CSV ====================
         async function fetchGoogleSheetCSV(url) {

@@ -33,13 +33,15 @@ Onglets **Événements** / **Bloc-notes**. Chaque mode a sa grille de cartes et 
 
 ## 3. Création & import de contenu
 
-### Événements — 3 sources
+### Événements — 2 sources
 | Source | Mécanisme |
 |---|---|
 | **CSV** | Fichier local, parsé par PapaParse |
 | **Google Sheets** | URL → fonction Netlify `gsheet-proxy` (contourne CORS), repli en fetch direct |
-| **Airtable** | Fonction Netlify `airtable-import-2` (clés côté serveur) |
 | **Vide** | `createEmptyEvent()` — événement à remplir à la main |
+
+> Airtable a été retiré le 28/08/2026 : source inutilisée, la liaison Google Sheets
+> la remplace intégralement.
 
 **Format CSV attendu :** `timing,title,people,question_text,question_content`
 Les lignes partageant `timing`+`title` sont regroupées en une séquence ; chaque ligne ajoute une question.
