@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Règles Firestore de MCNote.
+//
+// Changement par rapport aux règles en place depuis le 04/10/2025 : la
+// collection `notebooks` n'y figurait pas du tout. Firestore refuse par défaut
+// tout ce qui n'est pas explicitement autorisé, donc la fonctionnalité
+// Bloc-notes était intégralement bloquée — aucune collection `notebooks`
+// n'existe en base, ce qui le confirme.
+//
+// Les sous-collections restent ouvertes à tout compte authentifié, exactement
+// comme aujourd'hui. Les restreindre au propriétaire du parent impose un
+// get() par document lu ou écrit : à faire, mais à froid, pas la veille d'un
+// événement.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function estProprietaire(donnees) {
+      return request.auth != null && request.auth.uid == donnees.owner;
+    }
+
+    match /events/{eventId} {
+      allow read, write: if estProprietaire(resource.data);
+      allow create: if estProprietaire(request.resource.data);
+
+      match /sequences/{sequenceId} {
+        allow read, write: if request.auth != null;
+      }
+
+      match /categories/{categoryId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    match /notebooks/{notebookId} {
+      allow read, write: if estProprietaire(resource.data);
+      allow create: if estProprietaire(request.resource.data);
+
+      match /notes/{noteId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+  }
+}

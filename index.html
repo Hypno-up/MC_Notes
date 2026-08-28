@@ -1971,18 +1971,37 @@
         });
 
         // ==================== EVENTS ====================
+        // Le rendu se fait sur une liste locale, pas sur `events` directement :
+        // le chargement des séquences est asynchrone, et deux instantanés qui se
+        // chevauchent écrivaient dans le même tableau. Résultat, un événement
+        // supprimé pouvait être réaffiché par un instantané antérieur encore en vol.
+        // Le compteur de génération fait gagner le plus récent, et le try/catch
+        // garantit que l'écran se met à jour même si une lecture échoue.
+        let generationEvents = 0;
+
         async function loadEvents() {
             const q = query(collection(db, "events"), where("owner", "==", currentUser.uid));
             onSnapshot(q, async (snapshot) => {
-                events = [];
-                for (const docSnap of snapshot.docs) {
-                    const data = { id: docSnap.id, ...docSnap.data() };
-                    const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
-                    data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
-                    data.sequences.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
-                    events.push(data);
+                const generation = ++generationEvents;
+                const liste = [];
+                try {
+                    for (const docSnap of snapshot.docs) {
+                        const data = { id: docSnap.id, ...docSnap.data() };
+                        const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
+                        data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
+                        data.sequences.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
+                        liste.push(data);
+                    }
+                } catch (e) {
+                    console.error('loadEvents:', e);
+                    showToast('Lecture partielle : ' + (e.code || e.message));
                 }
+                if (generation !== generationEvents) return; // un instantané plus récent a pris la main
+                events = liste;
                 renderEventsGrid();
+            }, (e) => {
+                console.error('loadEvents (listener):', e);
+                showToast('Erreur de lecture : ' + (e.code || e.message));
             });
         }
 
@@ -2112,11 +2131,27 @@
         };
 
         window.deleteEvent = async (id) => {
-            if (!confirm('Supprimer ?')) return;
-            const seqs = await getDocs(collection(db, "events", id, "sequences"));
-            for (const s of seqs.docs) await deleteDoc(doc(db, "events", id, "sequences", s.id));
-            await deleteDoc(doc(db, "events", id));
-            showToast('Supprimé');
+            const cible = events.find(e => e.id === id);
+            if (!confirm(`Supprimer « ${cible?.name || 'cet événement'} » et tout son contenu ?`)) return;
+            try {
+                // `categories` était oubliée : la sous-collection survivait à la
+                // suppression du parent et laissait un document fantôme en base.
+                for (const sousCollection of ['sequences', 'categories']) {
+                    const docs = await getDocs(collection(db, "events", id, sousCollection));
+                    for (const d of docs.docs) {
+                        await deleteDoc(doc(db, "events", id, sousCollection, d.id));
+                    }
+                }
+                await deleteDoc(doc(db, "events", id));
+                // On retire tout de suite de l'affichage sans attendre l'instantané,
+                // pour que l'écran réponde même si le listener tarde.
+                events = events.filter(e => e.id !== id);
+                renderEventsGrid();
+                showToast('Supprimé');
+            } catch (e) {
+                console.error('deleteEvent:', e);
+                showToast('Suppression impossible : ' + (e.code || e.message));
+            }
         };
 
         window.openEvent = (id) => {
@@ -2137,17 +2172,30 @@
         };
 
         // ==================== NOTEBOOKS ====================
+        let generationNotebooks = 0;
+
         async function loadNotebooks() {
             const q = query(collection(db, "notebooks"), where("owner", "==", currentUser.uid));
             onSnapshot(q, async (snapshot) => {
-                notebooks = [];
-                for (const docSnap of snapshot.docs) {
-                    const data = { id: docSnap.id, ...docSnap.data() };
-                    const notesSnap = await getDocs(collection(db, "notebooks", docSnap.id, "notes"));
-                    data.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
-                    notebooks.push(data);
+                const generation = ++generationNotebooks;
+                const liste = [];
+                try {
+                    for (const docSnap of snapshot.docs) {
+                        const data = { id: docSnap.id, ...docSnap.data() };
+                        const notesSnap = await getDocs(collection(db, "notebooks", docSnap.id, "notes"));
+                        data.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
+                        liste.push(data);
+                    }
+                } catch (e) {
+                    console.error('loadNotebooks:', e);
+                    showToast('Lecture partielle : ' + (e.code || e.message));
                 }
+                if (generation !== generationNotebooks) return;
+                notebooks = liste;
                 renderNotebooksGrid();
+            }, (e) => {
+                console.error('loadNotebooks (listener):', e);
+                showToast('Erreur de lecture : ' + (e.code || e.message));
             });
         }
 
@@ -2269,11 +2317,19 @@
         };
 
         window.deleteNotebook = async (id) => {
-            if (!confirm('Supprimer ce bloc-notes ?')) return;
-            const notes = await getDocs(collection(db, "notebooks", id, "notes"));
-            for (const n of notes.docs) await deleteDoc(doc(db, "notebooks", id, "notes", n.id));
-            await deleteDoc(doc(db, "notebooks", id));
-            showToast('Supprimé');
+            const cible = notebooks.find(n => n.id === id);
+            if (!confirm(`Supprimer « ${cible?.name || 'ce bloc-notes'} » et toutes ses notes ?`)) return;
+            try {
+                const notes = await getDocs(collection(db, "notebooks", id, "notes"));
+                for (const n of notes.docs) await deleteDoc(doc(db, "notebooks", id, "notes", n.id));
+                await deleteDoc(doc(db, "notebooks", id));
+                notebooks = notebooks.filter(n => n.id !== id);
+                renderNotebooksGrid();
+                showToast('Supprimé');
+            } catch (e) {
+                console.error('deleteNotebook:', e);
+                showToast('Suppression impossible : ' + (e.code || e.message));
+            }
         };
 
         window.openNotebook = (id) => {
@@ -2393,10 +2449,15 @@
 
         window.deleteNote = async (id) => {
             if (!confirm('Supprimer cette note ?')) return;
-            await deleteDoc(doc(db, "notebooks", currentNotebook.id, "notes", id));
-            currentNotebook.notes = currentNotebook.notes.filter(n => n.id !== id);
-            renderNotesList();
-            showToast('Note supprimée');
+            try {
+                await deleteDoc(doc(db, "notebooks", currentNotebook.id, "notes", id));
+                currentNotebook.notes = currentNotebook.notes.filter(n => n.id !== id);
+                renderNotesList();
+                showToast('Note supprimée');
+            } catch (e) {
+                console.error('deleteNote:', e);
+                showToast('Suppression impossible : ' + (e.code || e.message));
+            }
         };
 
         // ==================== NOTE VIEW ====================
