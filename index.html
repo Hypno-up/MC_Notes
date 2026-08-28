@@ -1818,7 +1818,9 @@
             signOut 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
-            getFirestore, 
+            initializeFirestore,
+            persistentLocalCache,
+            persistentMultipleTabManager,
             doc, 
             collection, 
             addDoc, 
@@ -1842,7 +1844,20 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Cache local persistant : l'app reste utilisable sans réseau (salle sans wifi,
+        // 4G qui saute en plein direct). Firestore rejoue les écritures à la reconnexion.
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
+
+        // Base des fonctions serverless. Sur le web les chemins relatifs suffisent ;
+        // dans l'APK la page est servie depuis http://localhost et un chemin relatif
+        // viserait le téléphone lui-même — d'où l'URL absolue.
+        const IS_NATIVE = location.protocol === 'file:'
+            || location.protocol === 'capacitor:'
+            || location.hostname === 'localhost'
+            || location.hostname === '127.0.0.1';
+        const API_BASE = IS_NATIVE ? 'https://mcnote.netlify.app' : '';
 
         // ==================== STATE ====================
         let currentUser = null;
@@ -2798,7 +2813,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 // Try using Netlify proxy function first (avoids CORS issues)
                 try {
                     console.log('Trying proxy function...');
-                    const proxyResponse = await fetch('/.netlify/functions/gsheet-proxy', {
+                    const proxyResponse = await fetch(API_BASE + '/.netlify/functions/gsheet-proxy', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url })
@@ -2937,7 +2952,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             btn.disabled = true;
             btn.innerHTML = '<div class="loading-spinner"></div>';
             try {
-                const res = await fetch('/.netlify/functions/airtable-import-2', {
+                const res = await fetch(API_BASE + '/.netlify/functions/airtable-import-2', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: currentUser.uid, eventName: name })
@@ -2960,7 +2975,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             // Try using Netlify proxy function first (avoids CORS issues)
             try {
                 console.log('Fetching via proxy:', url);
-                const proxyResponse = await fetch('/.netlify/functions/gsheet-proxy', {
+                const proxyResponse = await fetch(API_BASE + '/.netlify/functions/gsheet-proxy', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
@@ -3133,63 +3148,105 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             }
         }
 
-        // Silent refresh (no confirmation, just update if changed)
+        // ==================== SYNCHRONISATION NON DESTRUCTIVE ====================
+        // L'ancienne version comparait le NOMBRE d'éléments puis supprimait/recréait
+        // tout le contenu. Deux conséquences graves en direct : une correction de
+        // texte à nombre constant passait inaperçue, et une vraie mise à jour
+        // effaçait les validations et les notes prises sur scène.
+        // Ici on rapproche ligne à ligne : on met à jour, on ajoute, on supprime,
+        // et on ne touche jamais aux champs saisis par l'utilisateur.
+
+        function parseSheetSequences(csvText) {
+            const parsed = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                transformHeader: h => h.trim().toLowerCase()
+            });
+            const groups = new Map();
+            parsed.data.forEach(row => {
+                const timing = (row.timing || '').trim();
+                const title = (row.title || '').trim();
+                if (!timing && !title) return;
+                const key = `${timing}|${title}`;
+                if (!groups.has(key)) {
+                    groups.set(key, { timing, title, people: (row.people || '').trim(), questions: [] });
+                }
+                const qText = (row.question_text || '').trim();
+                const qContent = (row.question_content || '').trim();
+                if (qText || qContent) groups.get(key).questions.push({ text: qText, content: qContent });
+            });
+            return groups;
+        }
+
+        function parseSheetNotes(csvText) {
+            const parsed = Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                transformHeader: h => h.trim().toLowerCase()
+            });
+            const notes = [];
+            parsed.data.forEach((row, i) => {
+                const title = (row.title || '').trim();
+                const content = (row.content || '').trim();
+                if (title || content) notes.push({ key: `${i}|${title}`, title: title || 'Sans titre', content });
+            });
+            return notes;
+        }
+
         async function silentRefreshEvent(id) {
             const eventData = events.find(e => e.id === id);
             if (!eventData || !eventData.sourceUrl) return;
-            
+            if (!navigator.onLine) return;
+
             try {
-                const csvText = await fetchGoogleSheetCSV(eventData.sourceUrl);
-                const parsed = Papa.parse(csvText, { 
-                    header: true, 
-                    skipEmptyLines: true, 
-                    transformHeader: h => h.trim().toLowerCase() 
-                });
-                
-                // Count new sequences
-                const groups = new Map();
-                parsed.data.forEach(row => {
-                    const timing = (row.timing || '').trim();
-                    const title = (row.title || '').trim();
-                    if (!timing && !title) return;
-                    const key = `${timing}|${title}`;
+                const groups = parseSheetSequences(await fetchGoogleSheetCSV(eventData.sourceUrl));
+                if (groups.size === 0) return; // feuille vide ou illisible : on ne détruit rien
+
+                const existing = eventData.sequences || [];
+                const byKey = new Map(existing.map(s => [`${s.timing || ''}|${s.title || ''}`, s]));
+                let added = 0, updated = 0, removed = 0;
+
+                for (const [key, incoming] of groups) {
+                    const current = byKey.get(key);
+                    if (!current) {
+                        const ref = await addDoc(collection(db, "events", id, "sequences"),
+                            { ...incoming, validated: false });
+                        existing.push({ id: ref.id, ...incoming, validated: false });
+                        added++;
+                    } else {
+                        const changed = (current.people || '') !== incoming.people
+                            || JSON.stringify(current.questions || []) !== JSON.stringify(incoming.questions);
+                        if (changed) {
+                            // validated et note ne sont pas touchés : ils appartiennent à l'utilisateur.
+                            await updateDoc(doc(db, "events", id, "sequences", current.id),
+                                { people: incoming.people, questions: incoming.questions });
+                            current.people = incoming.people;
+                            current.questions = incoming.questions;
+                            updated++;
+                        }
+                    }
+                }
+
+                for (const current of [...existing]) {
+                    const key = `${current.timing || ''}|${current.title || ''}`;
                     if (!groups.has(key)) {
-                        groups.set(key, { timing, title, people: (row.people || '').trim(), questions: [], validated: false });
+                        await deleteDoc(doc(db, "events", id, "sequences", current.id));
+                        existing.splice(existing.indexOf(current), 1);
+                        removed++;
                     }
-                    const qText = (row.question_text || '').trim();
-                    const qContent = (row.question_content || '').trim();
-                    if (qText || qContent) groups.get(key).questions.push({ text: qText, content: qContent });
-                });
-                
-                // Check if count changed
-                const currentCount = eventData.sequences?.length || 0;
-                const newCount = groups.size;
-                
-                if (newCount !== currentCount) {
-                    console.log(`Auto-sync: Event changed (${currentCount} -> ${newCount} sequences)`);
-                    showToast(`🔄 Mise à jour détectée ! ${newCount} séquences`);
-                    
-                    // Delete existing and recreate
-                    const existingSeqs = await getDocs(collection(db, "events", id, "sequences"));
-                    for (const seqDoc of existingSeqs.docs) {
-                        await deleteDoc(doc(db, "events", id, "sequences", seqDoc.id));
-                    }
-                    
-                    for (const seq of groups.values()) {
-                        await addDoc(collection(db, "events", id, "sequences"), seq);
-                    }
-                    
-                    // Reload sequences
-                    const seqSnap = await getDocs(collection(db, "events", id, "sequences"));
-                    eventData.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
-                    eventData.sequences.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
-                    
-                    // Update current event if same
-                    if (currentEvent && currentEvent.id === id) {
-                        currentEvent.sequences = eventData.sequences;
-                        renderProgressSidebar();
-                        renderCurrentSequence();
-                    }
+                }
+
+                if (!added && !updated && !removed) return;
+
+                existing.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
+                eventData.sequences = existing;
+                showToast(`🔄 Conducteur mis à jour (${added} ajout(s), ${updated} modif., ${removed} suppr.)`);
+
+                if (currentEvent && currentEvent.id === id) {
+                    currentEvent.sequences = existing;
+                    if (currentSequenceIndex >= existing.length) currentSequenceIndex = Math.max(0, existing.length - 1);
+                    renderProgressSidebar();
+                    renderCurrentSequence();
                 }
             } catch (e) {
                 console.error('Auto-sync event error:', e);
@@ -3199,61 +3256,106 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         async function silentRefreshNotebook(id) {
             const notebookData = notebooks.find(n => n.id === id);
             if (!notebookData || !notebookData.sourceUrl) return;
-            
+            if (!navigator.onLine) return;
+
             try {
-                const csvText = await fetchGoogleSheetCSV(notebookData.sourceUrl);
-                const parsed = Papa.parse(csvText, { 
-                    header: true, 
-                    skipEmptyLines: true, 
-                    transformHeader: h => h.trim().toLowerCase() 
-                });
-                
-                // Count notes
-                let newCount = 0;
-                for (const row of parsed.data) {
-                    const title = (row.title || '').trim();
-                    const content = (row.content || '').trim();
-                    if (title || content) newCount++;
+                const incomingNotes = parseSheetNotes(await fetchGoogleSheetCSV(notebookData.sourceUrl));
+                if (incomingNotes.length === 0) return;
+
+                const existing = notebookData.notes || [];
+                let added = 0, updated = 0, removed = 0;
+
+                // Rapprochement positionnel : une note du bloc-notes vient toujours
+                // d'une ligne de la feuille, dans le même ordre.
+                for (let i = 0; i < incomingNotes.length; i++) {
+                    const incoming = incomingNotes[i];
+                    const current = existing[i];
+                    if (!current) {
+                        const payload = { title: incoming.title, content: incoming.content, createdAt: new Date() };
+                        const ref = await addDoc(collection(db, "notebooks", id, "notes"), payload);
+                        existing.push({ id: ref.id, ...payload });
+                        added++;
+                    } else if ((current.title || '') !== incoming.title || (current.content || '') !== incoming.content) {
+                        await updateDoc(doc(db, "notebooks", id, "notes", current.id),
+                            { title: incoming.title, content: incoming.content });
+                        current.title = incoming.title;
+                        current.content = incoming.content;
+                        updated++;
+                    }
                 }
-                
-                const currentCount = notebookData.notes?.length || 0;
-                
-                if (newCount !== currentCount) {
-                    console.log(`Auto-sync: Notebook changed (${currentCount} -> ${newCount} notes)`);
-                    showToast(`🔄 Mise à jour détectée ! ${newCount} notes`);
-                    
-                    // Delete existing and recreate
-                    const existingNotes = await getDocs(collection(db, "notebooks", id, "notes"));
-                    for (const noteDoc of existingNotes.docs) {
-                        await deleteDoc(doc(db, "notebooks", id, "notes", noteDoc.id));
-                    }
-                    
-                    for (const row of parsed.data) {
-                        const title = (row.title || '').trim();
-                        const content = (row.content || '').trim();
-                        if (title || content) {
-                            await addDoc(collection(db, "notebooks", id, "notes"), { 
-                                title: title || 'Sans titre', 
-                                content, 
-                                createdAt: new Date() 
-                            });
-                        }
-                    }
-                    
-                    // Reload notes
-                    const notesSnap = await getDocs(collection(db, "notebooks", id, "notes"));
-                    notebookData.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
-                    
-                    // Update current notebook if same
-                    if (currentNotebook && currentNotebook.id === id) {
-                        currentNotebook.notes = notebookData.notes;
-                        renderNotesList();
-                    }
+
+                while (existing.length > incomingNotes.length) {
+                    const gone = existing.pop();
+                    await deleteDoc(doc(db, "notebooks", id, "notes", gone.id));
+                    removed++;
+                }
+
+                if (!added && !updated && !removed) return;
+
+                notebookData.notes = existing;
+                showToast(`🔄 Bloc-notes mis à jour (${added} ajout(s), ${updated} modif., ${removed} suppr.)`);
+
+                if (currentNotebook && currentNotebook.id === id) {
+                    currentNotebook.notes = existing;
+                    if (currentNoteIndex >= existing.length) currentNoteIndex = Math.max(0, existing.length - 1);
+                    renderNotesList();
                 }
             } catch (e) {
                 console.error('Auto-sync notebook error:', e);
             }
         }
+
+        // ==================== ÉCRAN TOUJOURS ALLUMÉ ====================
+        // Sur scène, un écran qui s'éteint au milieu d'une séquence est une panne.
+        // On maintient le réveil tant qu'un conducteur ou une note est affiché.
+        let wakeLock = null;
+
+        function isPresenting() {
+            const visible = id => {
+                const el = document.getElementById(id);
+                return el && getComputedStyle(el).display !== 'none';
+            };
+            return visible('sequencePage') || visible('noteViewPage')
+                || document.getElementById('prompterOverlay').classList.contains('active');
+        }
+
+        async function syncWakeLock() {
+            if (!('wakeLock' in navigator)) return;
+            try {
+                if (isPresenting() && !wakeLock && document.visibilityState === 'visible') {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => { wakeLock = null; });
+                } else if (!isPresenting() && wakeLock) {
+                    await wakeLock.release();
+                    wakeLock = null;
+                }
+            } catch (e) {
+                // Refus du navigateur (batterie faible, onglet masqué) : sans gravité.
+                wakeLock = null;
+            }
+        }
+
+        setInterval(syncWakeLock, 2000);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') { wakeLock = null; syncWakeLock(); }
+        });
+
+        // ==================== INDICATEUR RÉSEAU ====================
+        // Sans réseau l'app continue de fonctionner sur le cache local, mais
+        // l'utilisateur doit le savoir : ce qu'il voit peut ne plus être à jour.
+        const netBanner = document.createElement('div');
+        netBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;'
+            + 'background:#b45309;color:#fff;font-size:13px;font-weight:600;'
+            + 'text-align:center;padding:6px 12px;display:none;';
+        netBanner.textContent = '⚠️ Hors ligne — affichage depuis le cache local';
+        document.body.appendChild(netBanner);
+
+        function updateNetworkBanner() {
+            netBanner.style.display = navigator.onLine ? 'none' : 'block';
+        }
+        window.addEventListener('online', () => { updateNetworkBanner(); showToast('✅ Connexion rétablie'); });
+        window.addEventListener('offline', () => { updateNetworkBanner(); showToast('⚠️ Hors ligne'); });
+        updateNetworkBanner();
 
         // Start auto-sync when app loads
         startAutoSync();
