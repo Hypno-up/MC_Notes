@@ -2766,7 +2766,16 @@
                     renderCurrentSequence();
                     renderEventsGrid();
                     closeSequenceEditModal();
-                    showToast('Séquence ajoutée');
+
+                    // L'application ne sait pas ecrire dans la feuille. On met la
+                    // ligne dans le presse-papiers pour qu'un simple collage la
+                    // reporte a l'identique, colonnes comprises.
+                    if (currentEvent.sourceType === 'gsheet'
+                        && await copierLigneFeuille([timing, title, people, subtitle, content])) {
+                        showToast('Séquence ajoutée — ligne copiée pour la feuille');
+                    } else {
+                        showToast('Séquence ajoutée');
+                    }
                 } else {
                     const seq = currentEvent.sequences[currentSequenceIndex];
                     const donnees = {
@@ -2811,6 +2820,24 @@
                 showToast('Suppression impossible : ' + (e.code || e.message));
             }
         };
+
+        // Copie une ligne au format colonnes de la feuille (separateur tabulation :
+        // Google Sheets repartit alors automatiquement dans les cellules).
+        async function copierLigneFeuille(champs) {
+            const row = champs.join('\t');
+            try {
+                await navigator.clipboard.writeText(row);
+                return true;
+            } catch (e) {
+                const zone = document.createElement('textarea');
+                zone.value = row;
+                document.body.appendChild(zone);
+                zone.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(zone);
+                return ok;
+            }
+        }
 
         window.copySequenceForGsheet = () => {
             const timing = document.getElementById('editSeqTiming').value.trim();
