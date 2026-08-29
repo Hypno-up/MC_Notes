@@ -125,6 +125,11 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 - Détecte les modifications de contenu, pas seulement les ajouts/suppressions
 - Ignorée quand l'appareil est hors ligne
 - Toast récapitulatif : `X ajout(s), Y modif., Z suppr.`
+- **Changer la feuille source** (bouton 🔗 sur la carte) — recolle un événement
+  à une autre feuille. Le lien est lu et validé avant enregistrement : une
+  feuille non partagée ou sans les colonnes `timing`/`title` est refusée avec
+  le motif exact. Indispensable dès qu'une feuille est régénérée plutôt que
+  modifiée, ce qui change son URL
 - **Rafraîchissement manuel** sur chaque carte — passe par le même proxy et la
   même fusion non destructive que la synchronisation automatique. Il appelait
   auparavant l'URL `/edit` du Sheet en direct, ce qui ne pouvait pas fonctionner
@@ -164,7 +169,6 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
       `timing` alphabétique, pour corriger les événements multi-jours
 - [ ] Recherche dans les séquences / notes
 - [ ] Horodatage visible de la dernière synchro
-- [ ] Pouvoir changer la feuille source d'un événement depuis l'app
 
 ### Améliorations souhaitables
 - [ ] Export PDF du conducteur
