@@ -76,7 +76,11 @@ Modèle téléchargeable : `downloadNotebookTemplate()`.
 Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 - **Barre latérale de progression** — une pastille par séquence, cliquable (`goToSequence`), état validé visible, infobulle au survol
-- **Navigation** : Précédent (haut) / Suivant (bas), flèches ↑ ↓ au clavier
+- **Navigation** : la barre du bas est coupée en deux — **Précédent à gauche**,
+  **Suivant à droite**, deux cibles d'environ 165 × 69 px atteignables au pouce.
+  La moitié concernée se grise en début et en fin de conducteur. Le bandeau du
+  haut reste cliquable pour reculer et porte le bouton Accueil. Flèches ↑ ↓ au
+  clavier
 - **Contenu séquence** : horaire, titre, intervenants, liste des questions
 - **Validation** (`toggleValidation`, touche `v`) — la séquence passe en style « faite », le compteur d'accueil se met à jour
 - **Note rapide** — champ toujours actif sous la séquence, sauvegarde directe en Firestore sans mode édition

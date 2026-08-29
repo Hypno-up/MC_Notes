@@ -823,41 +823,69 @@
         }
 
         /* Next Sequence Bar */
-        .next-sequence-bar {
+        /* Barre du bas coupee en deux : reculer a gauche, avancer a droite.
+           C'est la zone que le pouce atteint sans lacher le telephone. */
+        .nav-bas {
             flex-shrink: 0;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            padding: 12px 15px;
-            padding-left: 45px;
+            display: flex;
+            min-height: 68px;
+            padding-left: 45px; /* laisse passer la colonne de progression */
+        }
+
+        .nav-moitie {
+            flex: 1 1 50%;
+            min-width: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 8px;
+            padding: 10px 12px;
             cursor: pointer;
-            min-height: 65px;
+            user-select: none;
+            transition: filter 0.15s;
         }
 
-        .next-sequence-bar.disabled {
-            background: rgba(100,100,120,0.5);
+        .nav-precedent {
+            background: linear-gradient(135deg, #4c4f9e, #6357b8);
+            border-right: 1px solid rgba(0, 0, 0, 0.28);
+        }
+
+        .nav-suivant {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .nav-moitie:active { filter: brightness(1.25); }
+
+        .nav-moitie.disabled {
+            background: rgba(100, 100, 120, 0.5);
             cursor: default;
+            opacity: 0.75;
         }
 
-        .next-sequence-info {
+        .nav-moitie.disabled:active { filter: none; }
+
+        .nav-infos {
             text-align: center;
+            min-width: 0;
         }
 
-        .next-sequence-info .label {
-            font-size: 0.65rem;
-            opacity: 0.8;
+        .nav-infos .label {
+            font-size: 0.62rem;
+            opacity: 0.85;
             text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
-        .next-sequence-info .title {
+        .nav-infos .title {
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .next-sequence-info .time {
-            font-size: 0.8rem;
+        .nav-infos .time {
+            font-size: 0.78rem;
             opacity: 0.9;
         }
 
@@ -1654,14 +1682,23 @@
             </div>
         </div>
 
-        <div class="next-sequence-bar" id="nextSequenceBar" onclick="goToNext()">
-            <i class="fas fa-chevron-down"></i>
-            <div class="next-sequence-info" id="nextSequenceInfo">
-                <div class="label">SUIVANT</div>
-                <div class="title">--</div>
-                <div class="time">--:--</div>
+        <div class="nav-bas">
+            <div class="nav-moitie nav-precedent" id="navPrecedent" onclick="goToPrevious()">
+                <i class="fas fa-chevron-up"></i>
+                <div class="nav-infos">
+                    <div class="label">PRÉCÉDENT</div>
+                    <div class="title" id="navPrecTitre">--</div>
+                    <div class="time" id="navPrecHeure">--:--</div>
+                </div>
             </div>
-            <i class="fas fa-chevron-down"></i>
+            <div class="nav-moitie nav-suivant" id="navSuivant" onclick="goToNext()">
+                <div class="nav-infos">
+                    <div class="label">SUIVANT</div>
+                    <div class="title" id="navSuivTitre">--</div>
+                    <div class="time" id="navSuivHeure">--:--</div>
+                </div>
+                <i class="fas fa-chevron-down"></i>
+            </div>
         </div>
     </div>
 
@@ -2746,26 +2783,47 @@
                 btn.innerHTML = '<i class="fas fa-check-circle"></i> <span>Valider</span>';
             }
 
-            // Prev
+            // Bandeau du haut : rappel de la sequence precedente.
+            // textContent partout : les titres viennent de la feuille et ne
+            // doivent jamais etre interpretes comme du HTML.
             const prev = document.getElementById('prevSequenceInfo');
-            if (currentSequenceIndex > 0) {
-                const p = currentEvent.sequences[currentSequenceIndex - 1];
-                prev.innerHTML = `<i class="fas fa-chevron-up"></i><span class="time">${p.timing||'--:--'}</span><span>${p.title||'--'}</span>`;
+            prev.textContent = '';
+            const precedente = currentSequenceIndex > 0
+                ? currentEvent.sequences[currentSequenceIndex - 1] : null;
+            const fleche = document.createElement('i');
+            fleche.className = precedente ? 'fas fa-chevron-up' : 'fas fa-flag';
+            prev.appendChild(fleche);
+            if (precedente) {
+                const heure = document.createElement('span');
+                heure.className = 'time';
+                heure.textContent = precedente.timing || '--:--';
+                const titre = document.createElement('span');
+                titre.textContent = precedente.title || '--';
+                prev.append(heure, titre);
             } else {
-                prev.innerHTML = `<i class="fas fa-flag"></i><span>Début</span>`;
+                const debut = document.createElement('span');
+                debut.textContent = 'Début';
+                prev.appendChild(debut);
             }
 
-            // Next
-            const nextBar = document.getElementById('nextSequenceBar');
-            const next = document.getElementById('nextSequenceInfo');
-            if (currentSequenceIndex < currentEvent.sequences.length - 1) {
-                const n = currentEvent.sequences[currentSequenceIndex + 1];
-                nextBar.classList.remove('disabled');
-                next.innerHTML = `<div class="label">SUIVANT</div><div class="title">${n.title||'--'}</div><div class="time">${n.timing||'--:--'}</div>`;
-            } else {
-                nextBar.classList.add('disabled');
-                next.innerHTML = `<div class="label">FIN</div><div class="title">Dernière séquence</div>`;
-            }
+            // Barre du bas, moitie gauche : reculer.
+            const moitieGauche = document.getElementById('navPrecedent');
+            moitieGauche.classList.toggle('disabled', !precedente);
+            document.getElementById('navPrecTitre').textContent =
+                precedente ? (precedente.title || '--') : 'Début';
+            document.getElementById('navPrecHeure').textContent =
+                precedente ? (precedente.timing || '--:--') : '';
+
+            // Barre du bas, moitie droite : avancer.
+            const suivante = currentSequenceIndex < currentEvent.sequences.length - 1
+                ? currentEvent.sequences[currentSequenceIndex + 1] : null;
+            const moitieDroite = document.getElementById('navSuivant');
+            moitieDroite.classList.toggle('disabled', !suivante);
+            document.getElementById('navSuivTitre').textContent =
+                suivante ? (suivante.title || '--') : 'Fin';
+            document.getElementById('navSuivHeure').textContent =
+                suivante ? (suivante.timing || '--:--') : '';
+
             renderProgressSidebar();
         }
 
