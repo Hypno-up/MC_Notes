@@ -85,7 +85,13 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
   se met en avant. Auparavant le texte était coupé en silence
 - **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran
 - **Prompteur** (voir §6)
-- **Mode édition** (`toggleEditMode`) — modifier horaire, titre, intervenants, questions ; ajout/suppression de séquence
+- **Mode édition** (`toggleEditMode`) — modifier horaire, titre, intervenants, questions
+- **Ajout d'une séquence en direct** (bouton **＋**) — le timing est prérempli à
+  l'heure courante, la séquence se classe donc immédiatement au bon endroit.
+  Elle porte `origine: 'local'`, ce qui la **protège de la synchronisation** :
+  sans ce marqueur elle serait effacée au passage suivant, puisqu'elle n'existe
+  pas dans la feuille source. Un badge « ajoutée sur place » la distingue, et
+  elle est la seule que le bouton Supprimer accepte d'effacer
 - **Copier pour Google Sheets** (`copySequenceForGsheet`) — met la séquence au presse-papiers au format tabulé, collable directement dans la feuille
 
 ---

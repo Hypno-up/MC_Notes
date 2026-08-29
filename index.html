@@ -642,6 +642,29 @@
            texte etait coupe sans aucun signe. Sur scene, l'animateur ne pouvait
            pas savoir qu'il manquait quelque chose. Elle defile desormais, et un
            degrade + une pastille signalent qu'il reste du contenu. */
+        .action-icon-btn.ajout-btn {
+            flex: 0 0 auto;
+            padding-left: 14px;
+            padding-right: 14px;
+            background: rgba(16, 185, 129, 0.18);
+            color: var(--success);
+        }
+
+        /* Repere sur les sequences creees depuis le telephone : elles ne viennent
+           pas de la feuille source et ne doivent pas etre confondues avec elle. */
+        .badge-local {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+            vertical-align: middle;
+        }
+
         .content-zone {
             position: relative;
             flex: 1;
@@ -1601,6 +1624,10 @@
                     <button class="action-icon-btn" onclick="toggleEditMode()">
                         <i class="fas fa-edit"></i> Éditer
                     </button>
+                    <button class="action-icon-btn ajout-btn" onclick="ajouterSequence()"
+                            title="Ajouter une séquence" aria-label="Ajouter une séquence">
+                        <i class="fas fa-plus"></i>
+                    </button>
                     <button class="action-icon-btn expand-btn" id="expandBtn" onclick="openPopup()">
                         <i class="fas fa-expand"></i> Lire
                     </button>
@@ -1806,7 +1833,7 @@
     <div class="modal-overlay" id="sequenceEditModal">
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
-                <h2><i class="fas fa-edit"></i> Éditer la séquence</h2>
+                <h2 id="sequenceEditModalTitle"><i class="fas fa-edit"></i> Éditer la séquence</h2>
                 <button class="modal-close" onclick="closeSequenceEditModal()">
                     <i class="fas fa-times"></i>
                 </button>
@@ -1841,6 +1868,10 @@
             </div>
             <div class="modal-footer">
                 <button class="modal-btn cancel" onclick="closeSequenceEditModal()">Annuler</button>
+                <button class="modal-btn" onclick="supprimerSequenceLocale()" id="deleteSeqBtn"
+                        style="background: var(--danger); display:none;">
+                    <i class="fas fa-trash"></i> Supprimer
+                </button>
                 <button class="modal-btn" onclick="copySequenceForGsheet()" style="background: #4285f4;" id="copyGsheetBtn">
                     <i class="fas fa-copy"></i> Copier
                 </button>
@@ -2557,7 +2588,18 @@
             main.classList.toggle('sequence-validated', seq.validated);
 
             document.getElementById('currentTime').textContent = seq.timing || '--:--';
-            document.getElementById('currentTitle').textContent = seq.title || '--';
+
+            // textContent puis ajout du badge : le titre vient de la feuille, il ne
+            // doit jamais etre interprete comme du HTML.
+            const zoneTitre = document.getElementById('currentTitle');
+            zoneTitre.textContent = seq.title || '--';
+            if (seq.origine === 'local') {
+                const badge = document.createElement('span');
+                badge.className = 'badge-local';
+                badge.textContent = 'ajoutée sur place';
+                zoneTitre.appendChild(badge);
+            }
+
             document.getElementById('currentPeople').textContent = seq.people || '';
 
             let content = '';
@@ -2636,37 +2678,57 @@
             if (seq) await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), { note: e.target.value });
         });
 
-        // ==================== SEQUENCE EDIT MODE ====================
+        // ==================== AJOUT / EDITION DE SEQUENCE ====================
+        // La modale sert aux deux usages. `modeAjoutSequence` distingue les cas.
+        let modeAjoutSequence = false;
+
+        function prepareModaleSequence({ ajout, seq }) {
+            modeAjoutSequence = ajout;
+            const titre = document.getElementById('sequenceEditModalTitle');
+            titre.innerHTML = ajout
+                ? '<i class="fas fa-plus"></i> Nouvelle séquence'
+                : '<i class="fas fa-edit"></i> Éditer la séquence';
+
+            const q = (seq && seq.questions && seq.questions[0]) ? seq.questions[0] : {};
+            document.getElementById('editSeqTiming').value = ajout ? heureCourante() : (seq.timing || '');
+            document.getElementById('editSeqTitle').value = ajout ? '' : (seq.title || '');
+            document.getElementById('editSeqPeople').value = ajout ? '' : (seq.people || '');
+            document.getElementById('editSeqSubtitle').value = ajout ? '' : (q.text || '');
+            document.getElementById('editSeqContent').value = ajout ? '' : (q.content || '');
+
+            // Supprimer n'est propose que pour une sequence creee sur le telephone :
+            // effacer une sequence venue de la feuille serait sans effet, la
+            // synchronisation la recreerait au passage suivant.
+            const btnSuppr = document.getElementById('deleteSeqBtn');
+            btnSuppr.style.display = (!ajout && seq && seq.origine === 'local') ? 'inline-flex' : 'none';
+
+            const syncInfo = document.getElementById('gsheetSyncInfo');
+            const copyBtn = document.getElementById('copyGsheetBtn');
+            const gsheet = currentEvent.sourceType === 'gsheet';
+            syncInfo.style.display = gsheet ? 'block' : 'none';
+            copyBtn.style.display = gsheet ? 'inline-flex' : 'none';
+
+            document.getElementById('sequenceEditModal').classList.add('active');
+        }
+
+        function heureCourante() {
+            const d = new Date();
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        // Ajout en direct, pendant l'evenement. Le timing est prerempli a l'heure
+        // qu'il est : la sequence se classe donc d'emblee au bon endroit.
+        window.ajouterSequence = () => {
+            if (!currentEvent) return showToast('Aucun événement ouvert');
+            prepareModaleSequence({ ajout: true });
+        };
+
         window.toggleEditMode = () => {
             if (!currentEvent || !currentEvent.sequences || !currentEvent.sequences[currentSequenceIndex]) {
                 return showToast('Aucune séquence sélectionnée');
             }
             
-            const seq = currentEvent.sequences[currentSequenceIndex];
-            
-            // Populate the edit form
-            document.getElementById('editSeqTiming').value = seq.timing || '';
-            document.getElementById('editSeqTitle').value = seq.title || '';
-            document.getElementById('editSeqPeople').value = seq.people || '';
-            
-            // Get first question data if exists
-            const firstQuestion = seq.questions && seq.questions[0] ? seq.questions[0] : {};
-            document.getElementById('editSeqSubtitle').value = firstQuestion.text || '';
-            document.getElementById('editSeqContent').value = firstQuestion.content || '';
-            
-            // Show Google Sheets sync info if this event is from Google Sheets
-            const syncInfo = document.getElementById('gsheetSyncInfo');
-            const copyBtn = document.getElementById('copyGsheetBtn');
-            if (currentEvent.sourceType === 'gsheet') {
-                syncInfo.style.display = 'block';
-                copyBtn.style.display = 'inline-flex';
-            } else {
-                syncInfo.style.display = 'none';
-                copyBtn.style.display = 'none';
-            }
-            
-            // Open modal
-            document.getElementById('sequenceEditModal').classList.add('active');
+            prepareModaleSequence({ ajout: false, seq: currentEvent.sequences[currentSequenceIndex] });
         };
 
         window.closeSequenceEditModal = () => {
@@ -2679,36 +2741,74 @@
             const people = document.getElementById('editSeqPeople').value.trim();
             const subtitle = document.getElementById('editSeqSubtitle').value.trim();
             const content = document.getElementById('editSeqContent').value.trim();
-            
+
             if (!title) return showToast('Le titre est requis');
-            
-            const seq = currentEvent.sequences[currentSequenceIndex];
-            
-            // Update sequence data
-            const updatedData = {
-                timing,
-                title,
-                people,
-                questions: [{ text: subtitle, content }],
-                validated: seq.validated || false
-            };
-            
+
             try {
-                // Save to Firebase
-                await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), updatedData);
-                
-                // Update local data
-                Object.assign(seq, updatedData);
-                
-                // Refresh display
+                if (modeAjoutSequence) {
+                    // `origine: 'local'` protege la sequence de la synchronisation :
+                    // sans ce marqueur, elle serait supprimee au passage suivant
+                    // puisqu'elle n'existe pas dans la feuille source.
+                    const donnees = {
+                        timing, title, people,
+                        questions: [{ text: subtitle, content }],
+                        validated: false,
+                        origine: 'local',
+                        createdAt: new Date()
+                    };
+                    const ref = await addDoc(collection(db, "events", currentEvent.id, "sequences"), donnees);
+
+                    currentEvent.sequences.push({ id: ref.id, ...donnees });
+                    currentEvent.sequences.sort((x, y) => (x.timing || '').localeCompare(y.timing || ''));
+                    currentSequenceIndex = currentEvent.sequences.findIndex(x => x.id === ref.id);
+
+                    renderProgressSidebar();
+                    renderCurrentSequence();
+                    renderEventsGrid();
+                    closeSequenceEditModal();
+                    showToast('Séquence ajoutée');
+                } else {
+                    const seq = currentEvent.sequences[currentSequenceIndex];
+                    const donnees = {
+                        timing, title, people,
+                        questions: [{ text: subtitle, content }],
+                        validated: seq.validated || false
+                    };
+                    await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), donnees);
+                    Object.assign(seq, donnees);
+                    currentEvent.sequences.sort((x, y) => (x.timing || '').localeCompare(y.timing || ''));
+                    currentSequenceIndex = currentEvent.sequences.findIndex(x => x.id === seq.id);
+
+                    renderProgressSidebar();
+                    renderCurrentSequence();
+                    closeSequenceEditModal();
+                    showToast('Séquence mise à jour');
+                }
+            } catch (e) {
+                console.error('saveSequenceEdit:', e);
+                showToast('Enregistrement impossible : ' + (e.code || e.message));
+            }
+        };
+
+        // Reservee aux sequences creees sur le telephone (voir prepareModaleSequence).
+        window.supprimerSequenceLocale = async () => {
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            if (!seq || seq.origine !== 'local') return;
+            if (!confirm(`Supprimer la séquence « ${seq.title} » ?`)) return;
+            try {
+                await deleteDoc(doc(db, "events", currentEvent.id, "sequences", seq.id));
+                currentEvent.sequences = currentEvent.sequences.filter(x => x.id !== seq.id);
+                if (currentSequenceIndex >= currentEvent.sequences.length) {
+                    currentSequenceIndex = Math.max(0, currentEvent.sequences.length - 1);
+                }
                 renderProgressSidebar();
                 renderCurrentSequence();
-                
+                renderEventsGrid();
                 closeSequenceEditModal();
-                showToast('Séquence mise à jour !');
+                showToast('Séquence supprimée');
             } catch (e) {
-                console.error(e);
-                showToast('Erreur: ' + e.message);
+                console.error('supprimerSequenceLocale:', e);
+                showToast('Suppression impossible : ' + (e.code || e.message));
             }
         };
 
@@ -3303,7 +3403,12 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 if (groups.size === 0) return; // feuille vide ou illisible : on ne détruit rien
 
                 const existing = eventData.sequences || [];
-                const byKey = new Map(existing.map(s => [`${s.timing || ''}|${s.title || ''}`, s]));
+                // Les sequences ajoutees depuis le telephone n'existent pas dans la
+                // feuille : on les exclut du rapprochement, sinon elles seraient
+                // supprimees au premier passage. Elles restent affichees et triees
+                // avec les autres.
+                const issuesDeLaFeuille = existing.filter(s => s.origine !== 'local');
+                const byKey = new Map(issuesDeLaFeuille.map(s => [`${s.timing || ''}|${s.title || ''}`, s]));
                 let added = 0, updated = 0, removed = 0;
 
                 for (const [key, incoming] of groups) {
@@ -3327,7 +3432,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     }
                 }
 
-                for (const current of [...existing]) {
+                for (const current of [...issuesDeLaFeuille]) {
                     const key = `${current.timing || ''}|${current.title || ''}`;
                     if (!groups.has(key)) {
                         await deleteDoc(doc(db, "events", id, "sequences", current.id));
