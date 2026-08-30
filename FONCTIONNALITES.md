@@ -129,7 +129,14 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
   séquences **relues depuis Firestore** et non de la liste affichée. Se fier à
   la liste en mémoire dupliquait la feuille entière quand elle était encore
   vide (juste après un import). Les doublons éventuels sont supprimés au
-  passage suivant. Les **validations** et les **notes rapides** saisies en direct ne sont jamais écrasées
+  passage suivant.
+- **Identité stable** : chaque séquence importée retient sa clé d'origine
+  (`cleSource`). Le rapprochement s'y appuie, pas sur le titre affiché — on peut
+  donc **renommer une séquence ou décaler son horaire depuis le téléphone**
+  sans qu'elle soit écrasée, tout en continuant à recevoir les mises à jour de
+  contenu. Les documents antérieurs sont rattrapés automatiquement.
+- Ce que la feuille met à jour : `people` et les questions. Ce qu'elle ne
+  touche jamais : `timing`, `title`, `validated` et la note rapide. Les **validations** et les **notes rapides** saisies en direct ne sont jamais écrasées
 - Détecte les modifications de contenu, pas seulement les ajouts/suppressions
 - Ignorée quand l'appareil est hors ligne
 - Toast récapitulatif : `X ajout(s), Y modif., Z suppr.`

@@ -3342,6 +3342,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 const key = `${timing}|${title}`;
                 if (!groups.has(key)) {
                     groups.set(key, { 
+                        cleSource: key,
                         timing, 
                         title, 
                         people: (row.people || '').trim(), 
@@ -3572,7 +3573,10 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 if (!timing && !title) return;
                 const key = `${timing}|${title}`;
                 if (!groups.has(key)) {
-                    groups.set(key, { timing, title, people: (row.people || '').trim(), questions: [] });
+                    // cleSource fige l'identite de la ligne dans la feuille. Le
+                    // rapprochement s'y appuie plutot que sur le titre affiche,
+                    // qui peut avoir ete modifie depuis le telephone.
+                    groups.set(key, { cleSource: key, timing, title, people: (row.people || '').trim(), questions: [] });
                 }
                 const qText = (row.question_text || '').trim();
                 const qContent = (row.question_content || '').trim();
@@ -3643,10 +3647,14 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 // Deux documents peuvent porter la meme cle a la suite d'une
                 // duplication passee. L'ancienne version les ecrasait dans la Map
                 // et ne les supprimait jamais : les doublons etaient indelebiles.
+                // Les documents anterieurs a cleSource sont rattaches par leur
+                // horaire et leur titre, puis rattrapes plus bas.
+                const cleDe = (seq) => seq.cleSource || `${seq.timing || ''}|${seq.title || ''}`;
+
                 const byKey = new Map();
                 const doublons = [];
                 for (const seq of issuesDeLaFeuille) {
-                    const cle = `${seq.timing || ''}|${seq.title || ''}`;
+                    const cle = cleDe(seq);
                     if (byKey.has(cle)) doublons.push(seq);
                     else byKey.set(cle, seq);
                 }
@@ -3665,22 +3673,28 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         existing.push({ id: ref.id, ...incoming, validated: false });
                         added++;
                     } else {
-                        const changed = (current.people || '') !== incoming.people
-                            || JSON.stringify(current.questions || []) !== JSON.stringify(incoming.questions);
-                        if (changed) {
-                            // validated et note ne sont pas touchés : ils appartiennent à l'utilisateur.
-                            await updateDoc(doc(db, "events", id, "sequences", current.id),
-                                { people: incoming.people, questions: incoming.questions });
-                            current.people = incoming.people;
-                            current.questions = incoming.questions;
-                            updated++;
+                        const majuscules = {};
+                        if ((current.people || '') !== incoming.people) majuscules.people = incoming.people;
+                        if (JSON.stringify(current.questions || []) !== JSON.stringify(incoming.questions)) {
+                            majuscules.questions = incoming.questions;
+                        }
+                        // Rattrapage des documents crees avant cleSource : on la
+                        // pose maintenant, tant que le titre correspond encore.
+                        if (!current.cleSource) majuscules.cleSource = key;
+
+                        if (Object.keys(majuscules).length) {
+                            // timing et title ne sont jamais ecrases : s'ils ont ete
+                            // modifies depuis le telephone, c'est un choix de
+                            // l'utilisateur. validated et note non plus.
+                            await updateDoc(doc(db, "events", id, "sequences", current.id), majuscules);
+                            Object.assign(current, majuscules);
+                            if (majuscules.people !== undefined || majuscules.questions !== undefined) updated++;
                         }
                     }
                 }
 
                 for (const current of [...issuesDeLaFeuille]) {
-                    const key = `${current.timing || ''}|${current.title || ''}`;
-                    if (!groups.has(key)) {
+                    if (!groups.has(cleDe(current))) {
                         await deleteDoc(doc(db, "events", id, "sequences", current.id));
                         existing.splice(existing.indexOf(current), 1);
                         removed++;
