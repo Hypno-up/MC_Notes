@@ -494,6 +494,81 @@
             display: none;
         }
 
+        /* ==================== SCENES ==================== */
+        .scene-bandeau {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 6px;
+            padding: 3px 10px 3px 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid var(--couleur-scene, var(--accent-primary));
+            cursor: pointer;
+            max-width: 100%;
+        }
+
+        .scene-pastille {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--couleur-scene, var(--accent-primary));
+            flex-shrink: 0;
+        }
+
+        .scene-nom {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: var(--couleur-scene, var(--accent-primary));
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .scene-bandeau i {
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+
+        .scene-ligne {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            padding: 13px 14px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            border-left: 4px solid var(--couleur-scene);
+            color: var(--text-primary);
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .scene-ligne:active { background: rgba(255, 255, 255, 0.12); }
+
+        .scene-ligne.active {
+            background: rgba(255, 255, 255, 0.13);
+            outline: 1px solid var(--couleur-scene);
+        }
+
+        .scene-ligne .nom {
+            font-weight: 600;
+            font-size: 0.95rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .scene-ligne .detail {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
         .progress-item {
             width: 26px;
             min-height: 26px;
@@ -516,6 +591,16 @@
 
         .progress-item.validated {
             background: var(--success);
+        }
+
+        /* Liseré de scène : posé en ombre interne, il reste visible par-dessus
+           les fonds « en cours » et « validée ». */
+        .progress-item.a-scene {
+            box-shadow: inset 3px 0 0 var(--couleur-scene);
+        }
+
+        .progress-item.a-scene.current {
+            box-shadow: inset 3px 0 0 var(--couleur-scene), 0 0 10px rgba(99, 102, 241, 0.5);
         }
 
         .progress-tooltip {
@@ -1643,6 +1728,11 @@
 
         <div class="sequence-main" id="sequenceMain">
             <div class="sequence-header">
+                <div class="scene-bandeau" id="sceneBandeau" onclick="ouvrirScenes()" style="display:none;">
+                    <span class="scene-pastille" id="scenePastille"></span>
+                    <span class="scene-nom" id="sceneNom"></span>
+                    <i class="fas fa-layer-group"></i>
+                </div>
                 <div class="sequence-time" id="currentTime">--:--</div>
                 <div class="sequence-title" id="currentTitle">--</div>
                 <div class="sequence-people" id="currentPeople"></div>
@@ -1895,6 +1985,10 @@
                     <input type="text" id="editSeqTitle" placeholder="Ex: Accueil des participants">
                 </div>
                 <div class="form-group">
+                    <label>Scène (regroupement)</label>
+                    <input type="text" id="editSeqScene" placeholder="Ex: Matinée">
+                </div>
+                <div class="form-group">
                     <label>Personnes / Intervenants</label>
                     <input type="text" id="editSeqPeople" placeholder="Ex: Jean Dupont, Marie Martin">
                 </div>
@@ -1923,6 +2017,20 @@
                     <i class="fas fa-copy"></i> Copier
                 </button>
                 <button class="modal-btn save" onclick="saveSequenceEdit()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="scenesModal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-layer-group"></i> Scènes</h2>
+                <button class="modal-close" onclick="fermerScenes()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="listeScenes"></div>
             </div>
         </div>
     </div>
@@ -2715,18 +2823,123 @@
         };
 
         // ==================== SEQUENCE NAVIGATION ====================
+        // ==================== SCENES ====================
+        // Une scene regroupe des sequences consecutives portant le meme nom.
+        // Les couleurs sont attribuees dans l'ordre d'apparition : pas de
+        // reglage a faire, et la meme scene garde sa couleur d'un lancement
+        // a l'autre tant que l'ordre de la feuille ne change pas.
+        // Ni vert ni indigo : ces deux teintes signalent deja « validee » et
+        // « en cours ». Une scene qui les reprendrait rendrait l'etat illisible.
+        const PALETTE_SCENES = ['#38bdf8', '#f472b6', '#fbbf24', '#fb923c',
+                                '#22d3ee', '#f87171', '#c084fc', '#e879f9'];
+
+        function scenesDeLEvenement() {
+            const scenes = [];
+            const parNom = new Map();
+            (currentEvent?.sequences || []).forEach((seq, i) => {
+                const nom = (seq.scene || '').trim();
+                if (!nom) return;
+                if (!parNom.has(nom)) {
+                    const scene = {
+                        nom,
+                        couleur: PALETTE_SCENES[parNom.size % PALETTE_SCENES.length],
+                        premierIndex: i,
+                        nombre: 0,
+                        validees: 0
+                    };
+                    parNom.set(nom, scene);
+                    scenes.push(scene);
+                }
+                const scene = parNom.get(nom);
+                scene.nombre++;
+                if (seq.validated) scene.validees++;
+            });
+            return { scenes, parNom };
+        }
+
         function renderProgressSidebar() {
             if (!currentEvent?.sequences) return;
+            const { parNom } = scenesDeLEvenement();
             const sidebar = document.getElementById('progressSidebar');
-            sidebar.innerHTML = currentEvent.sequences.map((s, i) => {
-                let cls = 'progress-item';
-                if (i === currentSequenceIndex) cls += ' current';
-                if (s.validated) cls += ' validated';
-                return `<div class="${cls}" onclick="goToSequence(${i})" 
-                    ontouchstart="showProgressTooltip(event,${i})" ontouchend="hideProgressTooltip()"
-                    onmouseenter="showProgressTooltip(event,${i})" onmouseleave="hideProgressTooltip()">${i+1}</div>`;
-            }).join('');
+            sidebar.textContent = '';
+
+            currentEvent.sequences.forEach((s, i) => {
+                const item = document.createElement('div');
+                item.className = 'progress-item';
+                if (i === currentSequenceIndex) item.classList.add('current');
+                if (s.validated) item.classList.add('validated');
+
+                const scene = parNom.get((s.scene || '').trim());
+                if (scene) {
+                    item.classList.add('a-scene');
+                    item.style.setProperty('--couleur-scene', scene.couleur);
+                }
+
+                item.textContent = i + 1;
+                item.addEventListener('click', () => goToSequence(i));
+                const montrer = (e) => showProgressTooltip(e, i);
+                item.addEventListener('touchstart', montrer);
+                item.addEventListener('touchend', hideProgressTooltip);
+                item.addEventListener('mouseenter', montrer);
+                item.addEventListener('mouseleave', hideProgressTooltip);
+                sidebar.appendChild(item);
+            });
         }
+
+        function majBandeauScene() {
+            const bandeau = document.getElementById('sceneBandeau');
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            const { parNom } = scenesDeLEvenement();
+            const scene = seq ? parNom.get((seq.scene || '').trim()) : null;
+
+            if (!scene) { bandeau.style.display = 'none'; return; }
+            bandeau.style.display = 'inline-flex';
+            bandeau.style.setProperty('--couleur-scene', scene.couleur);
+            document.getElementById('sceneNom').textContent = scene.nom;
+        }
+
+        window.ouvrirScenes = () => {
+            const { scenes } = scenesDeLEvenement();
+            const liste = document.getElementById('listeScenes');
+            liste.textContent = '';
+
+            if (!scenes.length) {
+                const vide = document.createElement('p');
+                vide.style.color = 'var(--text-secondary)';
+                vide.style.fontSize = '0.9rem';
+                vide.textContent = "Aucune scène. Ajoutez une colonne « scene » dans "
+                    + "votre feuille, ou renseignez le champ Scène en éditant une séquence.";
+                liste.appendChild(vide);
+            }
+
+            const seqCourante = currentEvent?.sequences?.[currentSequenceIndex];
+            const nomCourant = (seqCourante?.scene || '').trim();
+
+            scenes.forEach(scene => {
+                const ligne = document.createElement('button');
+                ligne.className = 'scene-ligne' + (scene.nom === nomCourant ? ' active' : '');
+                ligne.style.setProperty('--couleur-scene', scene.couleur);
+
+                const nom = document.createElement('span');
+                nom.className = 'nom';
+                nom.textContent = scene.nom;
+
+                const detail = document.createElement('span');
+                detail.className = 'detail';
+                detail.textContent = `${scene.validees}/${scene.nombre}`;
+
+                ligne.append(nom, detail);
+                ligne.addEventListener('click', () => {
+                    fermerScenes();
+                    goToSequence(scene.premierIndex);
+                });
+                liste.appendChild(ligne);
+            });
+
+            document.getElementById('scenesModal').classList.add('active');
+        };
+
+        window.fermerScenes = () => document.getElementById('scenesModal').classList.remove('active');
 
         window.goToSequence = (i) => { currentSequenceIndex = i; renderProgressSidebar(); renderCurrentSequence(); hideProgressTooltip(); };
         window.showProgressTooltip = (e, i) => {
@@ -2763,6 +2976,7 @@
             }
 
             document.getElementById('currentPeople').textContent = seq.people || '';
+            majBandeauScene();
 
             let content = '';
             (seq.questions || []).forEach(q => {
@@ -2875,6 +3089,7 @@
             const q = (seq && seq.questions && seq.questions[0]) ? seq.questions[0] : {};
             document.getElementById('editSeqTiming').value = ajout ? heureCourante() : (seq.timing || '');
             document.getElementById('editSeqTitle').value = ajout ? '' : (seq.title || '');
+            document.getElementById('editSeqScene').value = ajout ? sceneCourante() : (seq.scene || '');
             document.getElementById('editSeqPeople').value = ajout ? '' : (seq.people || '');
             document.getElementById('editSeqSubtitle').value = ajout ? '' : (q.text || '');
             document.getElementById('editSeqContent').value = ajout ? '' : (q.content || '');
@@ -2892,6 +3107,12 @@
             copyBtn.style.display = gsheet ? 'inline-flex' : 'none';
 
             document.getElementById('sequenceEditModal').classList.add('active');
+        }
+
+        // A l'ajout, on herite de la scene affichee : une sequence creee en
+        // direct appartient presque toujours au moment en cours.
+        function sceneCourante() {
+            return (currentEvent?.sequences?.[currentSequenceIndex]?.scene || '').trim();
         }
 
         function heureCourante() {
@@ -2922,6 +3143,7 @@
             const timing = document.getElementById('editSeqTiming').value.trim();
             const title = document.getElementById('editSeqTitle').value.trim();
             const people = document.getElementById('editSeqPeople').value.trim();
+            const scene = document.getElementById('editSeqScene').value.trim();
             const subtitle = document.getElementById('editSeqSubtitle').value.trim();
             const content = document.getElementById('editSeqContent').value.trim();
 
@@ -2933,7 +3155,7 @@
                     // sans ce marqueur, elle serait supprimee au passage suivant
                     // puisqu'elle n'existe pas dans la feuille source.
                     const donnees = {
-                        timing, title, people,
+                        timing, title, people, scene,
                         questions: [{ text: subtitle, content }],
                         validated: false,
                         origine: 'local',
@@ -2954,7 +3176,7 @@
                     // ligne dans le presse-papiers pour qu'un simple collage la
                     // reporte a l'identique, colonnes comprises.
                     if (currentEvent.sourceType === 'gsheet'
-                        && await copierLigneFeuille([timing, title, people, subtitle, content])) {
+                        && await copierLigneFeuille([timing, title, people, subtitle, content, scene])) {
                         showToast('Séquence ajoutée — ligne copiée pour la feuille');
                     } else {
                         showToast('Séquence ajoutée');
@@ -2962,7 +3184,7 @@
                 } else {
                     const seq = currentEvent.sequences[currentSequenceIndex];
                     const donnees = {
-                        timing, title, people,
+                        timing, title, people, scene,
                         questions: [{ text: subtitle, content }],
                         validated: seq.validated || false
                     };
@@ -3029,8 +3251,9 @@
             const subtitle = document.getElementById('editSeqSubtitle').value.trim();
             const content = document.getElementById('editSeqContent').value.trim();
             
+            const scene = document.getElementById('editSeqScene').value.trim();
             // Create CSV row (tab-separated for easy paste into Google Sheets)
-            const row = [timing, title, people, subtitle, content].join('\t');
+            const row = [timing, title, people, subtitle, content, scene].join('\t');
             
             navigator.clipboard.writeText(row).then(() => {
                 showToast('📋 Copié ! Collez dans votre Google Sheet');
@@ -3048,16 +3271,16 @@
 
         // ==================== TEMPLATE DOWNLOADS ====================
         window.downloadEventTemplate = () => {
-            const csvContent = `timing,title,people,question_text,question_content
-08:00,Accueil et café,Tous les participants,Bienvenue,Accueil des participants avec café et viennoiseries. Remise des badges.
-08:30,Introduction,Animateur,Présentation de la journée,Bonjour à tous et bienvenue ! Nous allons passer une journée riche en découvertes. Voici le programme...
-09:00,Session 1,Intervenant A,Premier sujet,Contenu détaillé de la première session. Points clés à aborder pendant cette intervention.
-10:30,Pause café,Tous,Networking,Pause de 20 minutes pour le réseautage et les échanges informels.
-10:50,Session 2,Intervenant B,Deuxième sujet,Contenu de la deuxième session avec les éléments importants à présenter.
-12:30,Déjeuner,Tous les participants,Repas,Déjeuner au restaurant partenaire. Tables réservées au nom de l'événement.
-14:00,Atelier pratique,Animateur + Participants,Mise en pratique,Exercices pratiques en petits groupes. Instructions et objectifs de l'atelier.
-15:30,Questions/Réponses,Panel,Échanges avec le public,Session de questions-réponses avec tous les intervenants. Questions préparées et questions du public.
-16:00,Clôture,Animateur,Remerciements et conclusion,Merci à tous pour votre participation ! Résumé des points clés et informations pour la suite.`;
+            const csvContent = `timing,title,people,question_text,question_content,scene
+08:00,Accueil et café,Tous les participants,Bienvenue,Accueil des participants avec café et viennoiseries. Remise des badges.,Accueil
+08:30,Introduction,Animateur,Présentation de la journée,Bonjour à tous et bienvenue ! Nous allons passer une journée riche en découvertes. Voici le programme...,Accueil
+09:00,Session 1,Intervenant A,Premier sujet,Contenu détaillé de la première session. Points clés à aborder pendant cette intervention.,Matinée
+10:30,Pause café,Tous,Networking,Pause de 20 minutes pour le réseautage et les échanges informels.,Matinée
+10:50,Session 2,Intervenant B,Deuxième sujet,Contenu de la deuxième session avec les éléments importants à présenter.,Matinée
+12:30,Déjeuner,Tous les participants,Repas,Déjeuner au restaurant partenaire. Tables réservées au nom de l'événement.,Déjeuner
+14:00,Atelier pratique,Animateur + Participants,Mise en pratique,Exercices pratiques en petits groupes. Instructions et objectifs de l'atelier.,Après-midi
+15:30,Questions/Réponses,Panel,Échanges avec le public,Session de questions-réponses avec tous les intervenants. Questions préparées et questions du public.,Après-midi
+16:00,Clôture,Animateur,Remerciements et conclusion,Merci à tous pour votre participation ! Résumé des points clés et informations pour la suite.,Clôture`;
             
             downloadCSV(csvContent, 'modele-evenement.csv');
             showToast('Modèle téléchargé !');
@@ -3331,6 +3554,8 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             const eventRef = await addDoc(collection(db, "events"), eventData);
             console.log('Event created with ID:', eventRef.id);
             
+            const aColonneScene = (parsed.meta.fields || []).includes('scene');
+
             const groups = new Map();
             parsed.data.forEach((row, index) => {
                 const timing = (row.timing || '').trim();
@@ -3347,7 +3572,8 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         title, 
                         people: (row.people || '').trim(), 
                         questions: [], 
-                        validated: false 
+                        validated: false,
+                        scene: aColonneScene ? (row.scene || '').trim() : ''
                     });
                 }
                 const qText = (row.question_text || '').trim();
@@ -3566,6 +3792,11 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 skipEmptyLines: true,
                 transformHeader: h => h.trim().toLowerCase()
             });
+            // La colonne `scene` est facultative. Si elle est absente, on ne
+            // renseigne pas le champ : la synchronisation n'ecrasera donc pas
+            // une scene attribuee a la main depuis le telephone.
+            const aColonneScene = (parsed.meta.fields || []).includes('scene');
+
             const groups = new Map();
             parsed.data.forEach(row => {
                 const timing = (row.timing || '').trim();
@@ -3576,7 +3807,12 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     // cleSource fige l'identite de la ligne dans la feuille. Le
                     // rapprochement s'y appuie plutot que sur le titre affiche,
                     // qui peut avoir ete modifie depuis le telephone.
-                    groups.set(key, { cleSource: key, timing, title, people: (row.people || '').trim(), questions: [] });
+                    groups.set(key, {
+                        cleSource: key, timing, title,
+                        people: (row.people || '').trim(),
+                        questions: [],
+                        ...(aColonneScene ? { scene: (row.scene || '').trim() } : {})
+                    });
                 }
                 const qText = (row.question_text || '').trim();
                 const qContent = (row.question_content || '').trim();
@@ -3677,6 +3913,9 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         if ((current.people || '') !== incoming.people) majuscules.people = incoming.people;
                         if (JSON.stringify(current.questions || []) !== JSON.stringify(incoming.questions)) {
                             majuscules.questions = incoming.questions;
+                        }
+                        if (incoming.scene !== undefined && (current.scene || '') !== incoming.scene) {
+                            majuscules.scene = incoming.scene;
                         }
                         // Rattrapage des documents crees avant cleSource : on la
                         // pose maintenant, tant que le titre correspond encore.

@@ -43,7 +43,11 @@ Onglets **Événements** / **Bloc-notes**. Chaque mode a sa grille de cartes et 
 > Airtable a été retiré le 28/08/2026 : source inutilisée, la liaison Google Sheets
 > la remplace intégralement.
 
-**Format CSV attendu :** `timing,title,people,question_text,question_content`
+**Format CSV attendu :** `timing,title,people,question_text,question_content,scene`
+
+La colonne `scene` est **facultative** et se place en dernier. Absente, elle
+n'est simplement pas gérée — et surtout, la synchronisation n'écrase alors pas
+les scènes attribuées à la main depuis le téléphone.
 Les lignes partageant `timing`+`title` sont regroupées en une séquence ; chaque ligne ajoute une question.
 Modèle téléchargeable : `downloadEventTemplate()`.
 
@@ -75,7 +79,18 @@ Modèle téléchargeable : `downloadNotebookTemplate()`.
 
 Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
-- **Barre latérale de progression** — une pastille par séquence, cliquable (`goToSequence`), état validé visible, infobulle au survol
+- **Barre latérale de progression** — une pastille par séquence, cliquable
+  (`goToSequence`), état validé visible, infobulle au survol, **liseré coloré
+  à la couleur de sa scène**
+- **Scènes** — regroupement libre des séquences (« Infos générales », « Matinée »,
+  « Après-midi », « Contacts »…). La scène courante s'affiche en bandeau coloré
+  au-dessus de l'horaire ; ce bandeau ouvre l'**accès rapide**, qui liste les
+  scènes avec leur avancement (`validées/total`) et saute directement à la
+  première séquence de celle qu'on choisit. Les couleurs sont attribuées dans
+  l'ordre d'apparition, sans réglage. Ni vert ni indigo dans la palette : ces
+  teintes signalent déjà « validée » et « en cours ». Une scène se renseigne
+  depuis la colonne `scene` de la feuille ou depuis le champ Scène de l'éditeur,
+  et une séquence ajoutée avec **＋** hérite de la scène affichée
 - **Navigation** : la barre du bas est coupée en deux — **Précédent à gauche**,
   **Suivant à droite**, deux cibles d'environ 165 × 69 px atteignables au pouce.
   La moitié concernée se grise en début et en fin de conducteur. Le bandeau du
