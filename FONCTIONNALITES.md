@@ -125,7 +125,11 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 ## 7. Synchronisation
 
 - **Auto-sync toutes les 30 s** — uniquement quand un événement ou un bloc-notes issu de Google Sheets est **affiché à l'écran**
-- **Rapprochement non destructif** *(corrigé)* : mise à jour ligne à ligne. Les **validations** et les **notes rapides** saisies en direct ne sont jamais écrasées
+- **Rapprochement non destructif** : mise à jour ligne à ligne, à partir des
+  séquences **relues depuis Firestore** et non de la liste affichée. Se fier à
+  la liste en mémoire dupliquait la feuille entière quand elle était encore
+  vide (juste après un import). Les doublons éventuels sont supprimés au
+  passage suivant. Les **validations** et les **notes rapides** saisies en direct ne sont jamais écrasées
 - Détecte les modifications de contenu, pas seulement les ajouts/suppressions
 - Ignorée quand l'appareil est hors ligne
 - Toast récapitulatif : `X ajout(s), Y modif., Z suppr.`

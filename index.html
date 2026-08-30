@@ -3625,14 +3625,37 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 const groups = parseSheetSequences(await fetchGoogleSheetCSV(eventData.sourceUrl));
                 if (groups.size === 0) return; // feuille vide ou illisible : on ne détruit rien
 
-                const existing = eventData.sequences || [];
+                // On relit les sequences depuis Firestore au lieu de se fier a la
+                // liste en memoire. Celle-ci peut etre vide ou incomplete — juste
+                // apres un import, ou avant que l'ecran d'accueil ait fini de
+                // charger. Le rapprochement ne reconnaissait alors plus rien et
+                // recreait la feuille entiere en double.
+                const snapshotSeq = await getDocs(collection(db, "events", id, "sequences"));
+                const existing = snapshotSeq.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                let added = 0, updated = 0, removed = 0;
+
                 // Les sequences ajoutees depuis le telephone n'existent pas dans la
                 // feuille : on les exclut du rapprochement, sinon elles seraient
-                // supprimees au premier passage. Elles restent affichees et triees
-                // avec les autres.
+                // supprimees au premier passage.
                 const issuesDeLaFeuille = existing.filter(s => s.origine !== 'local');
-                const byKey = new Map(issuesDeLaFeuille.map(s => [`${s.timing || ''}|${s.title || ''}`, s]));
-                let added = 0, updated = 0, removed = 0;
+
+                // Deux documents peuvent porter la meme cle a la suite d'une
+                // duplication passee. L'ancienne version les ecrasait dans la Map
+                // et ne les supprimait jamais : les doublons etaient indelebiles.
+                const byKey = new Map();
+                const doublons = [];
+                for (const seq of issuesDeLaFeuille) {
+                    const cle = `${seq.timing || ''}|${seq.title || ''}`;
+                    if (byKey.has(cle)) doublons.push(seq);
+                    else byKey.set(cle, seq);
+                }
+                for (const doublon of doublons) {
+                    await deleteDoc(doc(db, "events", id, "sequences", doublon.id));
+                    existing.splice(existing.indexOf(doublon), 1);
+                    issuesDeLaFeuille.splice(issuesDeLaFeuille.indexOf(doublon), 1);
+                    removed++;
+                }
 
                 for (const [key, incoming] of groups) {
                     const current = byKey.get(key);
