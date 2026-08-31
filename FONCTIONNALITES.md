@@ -167,7 +167,25 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ---
 
-## 8. Robustesse terrain *(ajouté ce soir)*
+## 8. Sécurité
+
+Chaque événement et chaque bloc-notes porte un champ `owner`. Les
+sous-collections n'ont pas de propriétaire propre : elles héritent de celui de
+leur parent, vérifié par un `get()` dans les règles. Un compte authentifié ne
+peut donc plus lire ni modifier les conducteurs d'un autre.
+
+Coût : une lecture supplémentaire par document de sous-collection lu ou écrit.
+Négligeable aux volumes en jeu, et c'est le prix de l'isolation.
+
+Vérifié sur émulateur, 19 contrôles : accès du propriétaire, refus d'un autre
+compte en lecture, écriture et suppression, refus anonyme, refus de créer un
+événement au nom d'autrui, refus sur sous-collection orpheline.
+
+> Conséquence : les sous-collections orphelines laissées par d'anciennes
+> suppressions ne sont plus accessibles depuis l'application. Elles y étaient
+> déjà invisibles ; leur nettoyage se fait depuis la console Firebase.
+
+## 9. Robustesse terrain
 
 | Fonction | Détail |
 |---|---|
@@ -178,7 +196,7 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ---
 
-## 9. Divers
+## 10. Divers
 
 - Toasts de notification (`showToast`)
 - Raccourcis clavier : ↑ ↓ (navigation), `v` (valider), `Espace` (prompteur), ← → (notes), `Échap` (fermer)
@@ -187,10 +205,9 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ---
 
-## 10. Ce qui reste à faire
+## 11. Ce qui reste à faire
 
 ### Bloquant avant mise en production
-- [ ] **Règles Firestore** — celles du README (`request.auth != null` sur les sous-collections) laissent tout compte lire les conducteurs des autres. À reprendre avec isolation par `owner`.
 - [ ] Ajouter `localhost` aux domaines autorisés dans Firebase → Authentication → Settings (sinon connexion impossible dans l'APK)
 - [ ] Supprimer `indexold.html` du dépôt (96 Ko servis publiquement)
 

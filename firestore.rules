@@ -2,16 +2,14 @@ rules_version = '2';
 
 // Règles Firestore de MCNote.
 //
-// Changement par rapport aux règles en place depuis le 04/10/2025 : la
-// collection `notebooks` n'y figurait pas du tout. Firestore refuse par défaut
-// tout ce qui n'est pas explicitement autorisé, donc la fonctionnalité
-// Bloc-notes était intégralement bloquée — aucune collection `notebooks`
-// n'existe en base, ce qui le confirme.
+// Chaque événement et chaque bloc-notes appartient à un compte, via son champ
+// `owner`. Les sous-collections n'ont pas de propriétaire propre : elles
+// héritent de celui de leur parent, vérifié par un get().
 //
-// Les sous-collections restent ouvertes à tout compte authentifié, exactement
-// comme aujourd'hui. Les restreindre au propriétaire du parent impose un
-// get() par document lu ou écrit : à faire, mais à froid, pas la veille d'un
-// événement.
+// Ce get() coûte une lecture par document lu ou écrit. C'est le prix de
+// l'isolation : sans lui, tout compte authentifié lisait les conducteurs des
+// autres. Les volumes en jeu — quelques dizaines de séquences par événement —
+// le rendent négligeable.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,16 +18,27 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == donnees.owner;
     }
 
+    // Le parent doit exister : une sous-collection orpheline, laissée par une
+    // suppression ancienne, n'est accessible à personne. L'application supprime
+    // toujours les enfants avant le parent, donc le cas ne se présente pas.
+    function proprietaireDuParent(chemin) {
+      return request.auth != null
+          && exists(chemin)
+          && get(chemin).data.owner == request.auth.uid;
+    }
+
     match /events/{eventId} {
       allow read, write: if estProprietaire(resource.data);
       allow create: if estProprietaire(request.resource.data);
 
       match /sequences/{sequenceId} {
-        allow read, write: if request.auth != null;
+        allow read, write: if proprietaireDuParent(
+          /databases/$(database)/documents/events/$(eventId));
       }
 
       match /categories/{categoryId} {
-        allow read, write: if request.auth != null;
+        allow read, write: if proprietaireDuParent(
+          /databases/$(database)/documents/events/$(eventId));
       }
     }
 
@@ -38,7 +47,8 @@ service cloud.firestore {
       allow create: if estProprietaire(request.resource.data);
 
       match /notes/{noteId} {
-        allow read, write: if request.auth != null;
+        allow read, write: if proprietaireDuParent(
+          /databases/$(database)/documents/notebooks/$(notebookId));
       }
     }
   }
