@@ -2250,7 +2250,7 @@
                         const data = { id: docSnap.id, ...docSnap.data() };
                         const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
                         data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
-                        data.sequences.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
+                        trierSequences(data.sequences);
                         liste.push(data);
                     }
                 } catch (e) {
@@ -2823,6 +2823,36 @@
         };
 
         // ==================== SEQUENCE NAVIGATION ====================
+        // ==================== ORDRE DES SEQUENCES ====================
+        // L'ordre d'un conducteur est celui voulu par son auteur, pas l'ordre
+        // alphabetique des horaires. Sur un evenement de plusieurs jours, trier
+        // sur « 07:00 » et « 14:30 » intercalait le mardi matin dans le lundi
+        // apres-midi. `ordre` est le rang de la ligne dans la feuille, espace de
+        // 10 pour laisser de la place aux ajouts faits sur le telephone.
+        function trierSequences(liste) {
+            const reperes = liste
+                .filter(s => typeof s.ordre === 'number')
+                .sort((a, b) => a.ordre - b.ordre);
+
+            // Une sequence sans `ordre` — creee avant l'introduction du champ —
+            // est glissee d'apres son horaire, juste apres le dernier repere
+            // qui la precede.
+            const rang = (s) => {
+                if (typeof s.ordre === 'number') return s.ordre;
+                let position = -5;
+                for (const repere of reperes) {
+                    if ((repere.timing || '') <= (s.timing || '')) position = repere.ordre + 0.5;
+                    else break;
+                }
+                return position;
+            };
+
+            return liste.sort((a, b) => {
+                const ecart = rang(a) - rang(b);
+                return ecart !== 0 ? ecart : (a.timing || '').localeCompare(b.timing || '');
+            });
+        }
+
         // ==================== SCENES ====================
         // Une scene regroupe des sequences consecutives portant le meme nom.
         // Les couleurs sont attribuees dans l'ordre d'apparition : pas de
@@ -3154,8 +3184,14 @@
                     // `origine: 'local'` protege la sequence de la synchronisation :
                     // sans ce marqueur, elle serait supprimee au passage suivant
                     // puisqu'elle n'existe pas dans la feuille source.
+                    // La nouvelle sequence se glisse juste apres celle qu'on
+                    // regarde : c'est ce qu'on attend d'un ajout fait en direct.
+                    const voisine = currentEvent.sequences[currentSequenceIndex];
+                    const rangVoisine = typeof voisine?.ordre === 'number' ? voisine.ordre : 0;
+
                     const donnees = {
                         timing, title, people, scene,
+                        ordre: rangVoisine + 5,
                         questions: [{ text: subtitle, content }],
                         validated: false,
                         origine: 'local',
@@ -3164,7 +3200,7 @@
                     const ref = await addDoc(collection(db, "events", currentEvent.id, "sequences"), donnees);
 
                     currentEvent.sequences.push({ id: ref.id, ...donnees });
-                    currentEvent.sequences.sort((x, y) => (x.timing || '').localeCompare(y.timing || ''));
+                    trierSequences(currentEvent.sequences);
                     currentSequenceIndex = currentEvent.sequences.findIndex(x => x.id === ref.id);
 
                     renderProgressSidebar();
@@ -3190,7 +3226,7 @@
                     };
                     await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), donnees);
                     Object.assign(seq, donnees);
-                    currentEvent.sequences.sort((x, y) => (x.timing || '').localeCompare(y.timing || ''));
+                    trierSequences(currentEvent.sequences);
                     currentSequenceIndex = currentEvent.sequences.findIndex(x => x.id === seq.id);
 
                     renderProgressSidebar();
@@ -3570,6 +3606,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         cleSource: key,
                         timing, 
                         title, 
+                        ordre: groups.size * 10,
                         people: (row.people || '').trim(), 
                         questions: [], 
                         validated: false,
@@ -3809,6 +3846,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     // qui peut avoir ete modifie depuis le telephone.
                     groups.set(key, {
                         cleSource: key, timing, title,
+                        ordre: groups.size * 10,
                         people: (row.people || '').trim(),
                         questions: [],
                         ...(aColonneScene ? { scene: (row.scene || '').trim() } : {})
@@ -3917,6 +3955,9 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         if (incoming.scene !== undefined && (current.scene || '') !== incoming.scene) {
                             majuscules.scene = incoming.scene;
                         }
+                        // Le rang appartient a la feuille : c'est elle qui fixe
+                        // le deroule. Un reordonnancement s'y propage donc.
+                        if (current.ordre !== incoming.ordre) majuscules.ordre = incoming.ordre;
                         // Rattrapage des documents crees avant cleSource : on la
                         // pose maintenant, tant que le titre correspond encore.
                         if (!current.cleSource) majuscules.cleSource = key;
@@ -3940,7 +3981,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     }
                 }
 
-                existing.sort((a, b) => (a.timing || '').localeCompare(b.timing || ''));
+                trierSequences(existing);
                 eventData.sequences = existing;
                 await updateDoc(doc(db, "events", id), { lastRefresh: new Date() });
 

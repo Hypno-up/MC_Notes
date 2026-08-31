@@ -49,6 +49,12 @@ La colonne `scene` est **facultative** et se place en dernier. Absente, elle
 n'est simplement pas gérée — et surtout, la synchronisation n'écrase alors pas
 les scènes attribuées à la main depuis le téléphone.
 Les lignes partageant `timing`+`title` sont regroupées en une séquence ; chaque ligne ajoute une question.
+
+**L'ordre du conducteur est celui de la feuille**, pas l'ordre alphabétique des
+horaires. Chaque séquence retient son rang de ligne (`ordre`), ce qui permet aux
+événements sur plusieurs jours de s'enchaîner correctement — auparavant le mardi
+matin s'intercalait dans le lundi après-midi. Une séquence ajoutée avec **＋** se
+glisse juste après celle qu'on regarde.
 Modèle téléchargeable : `downloadEventTemplate()`.
 
 **Mise en page du contenu.** Les cellules acceptent les retours à la ligne
@@ -57,11 +63,6 @@ l'import et à l'affichage. Une puce `•` en début de ligne suffit à obtenir 
 liste lisible. C'est la façon recommandée de présenter une liste de partenaires,
 de clubs ou de contacts.
 
-> ⚠️ **Événements sur plusieurs jours.** Les séquences sont triées par ordre
-> alphabétique sur `timing`. Sur une seule journée le résultat est chronologique,
-> mais sur plusieurs jours l'ordre est faux : `05:30` du mercredi passe avant
-> `07:00` du mardi. Contournement sans modification du code : préfixer le jour
-> dans la colonne `timing` (`J1 14:30`, `J2 07:00`, `J3 05:30`).
 
 ### Bloc-notes — 2 sources
 | Source | Mécanisme |
@@ -195,8 +196,6 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ### Fonctionnalités annoncées mais absentes
 - [ ] **Gestes de swipe** — mentionnés dans le README, aucun `touchstart` dans le code V3
-- [ ] Trier les séquences dans l'ordre de la feuille source plutôt que par
-      `timing` alphabétique, pour corriger les événements multi-jours
 - [ ] Recherche dans les séquences / notes
 - [ ] Horodatage visible de la dernière synchro
 
