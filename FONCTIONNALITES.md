@@ -103,6 +103,14 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 - **Zone de contenu défilante** — au-delà de la hauteur visible, un dégradé et
   une pastille « ▼ suite » signalent qu'il reste du texte, et le bouton « Lire »
   se met en avant. Auparavant le texte était coupé en silence
+- **Écart sur l'horaire** — une pastille à côté de l'heure annonce « à l'heure »,
+  « 20 min d'avance » ou « +12 min ». Elle se rafraîchit toute seule, et se tait
+  au-delà de six heures d'écart : on regarde alors un autre jour ou une fiche
+  d'information horodatée `00:0x`, où l'écart n'aurait aucun sens
+- **Recherche** (loupe, barre du haut) — porte sur l'horaire, le titre, les
+  intervenants, la scène, les questions et la note rapide. Insensible aux accents
+  et à la casse : « patisserie » trouve « Pâtisserie ». Chaque résultat montre un
+  extrait avec le terme surligné et saute à la séquence
 - **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran
 - **Prompteur** (voir §6)
 - **Mode édition** (`toggleEditMode`) — modifier horaire, titre, intervenants, questions
@@ -213,11 +221,9 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ### Fonctionnalités annoncées mais absentes
 - [ ] **Gestes de swipe** — mentionnés dans le README, aucun `touchstart` dans le code V3
-- [ ] Recherche dans les séquences / notes
 - [ ] Horodatage visible de la dernière synchro
 
 ### Améliorations souhaitables
 - [ ] Export PDF du conducteur
 - [ ] Partage d'un événement entre plusieurs utilisateurs
-- [ ] Alertes de dépassement d'horaire (comparaison `timing` / heure réelle)
 - [ ] Sortir le CSS et le JS de `index.html` (fichier unique de 3 400 lignes)

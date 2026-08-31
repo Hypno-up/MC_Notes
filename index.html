@@ -494,6 +494,27 @@
             display: none;
         }
 
+        .ligne-horaire {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ecart-horaire {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+
+        .ecart-horaire.a-lheure { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+        .ecart-horaire.avance   { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+        .ecart-horaire.retard   { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .ecart-horaire.gros-retard { background: rgba(239, 68, 68, 0.22); color: var(--danger); }
+
         /* ==================== SCENES ==================== */
         .scene-bandeau {
             display: inline-flex;
@@ -530,6 +551,67 @@
         .scene-bandeau i {
             font-size: 0.7rem;
             opacity: 0.7;
+        }
+
+        .resultat-ligne {
+            display: block;
+            width: 100%;
+            padding: 11px 13px;
+            margin-bottom: 7px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            border-left: 3px solid var(--couleur-scene, var(--accent-primary));
+            color: var(--text-primary);
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .resultat-ligne:active { background: rgba(255, 255, 255, 0.12); }
+
+        .resultat-ligne .entete {
+            display: flex;
+            align-items: baseline;
+            gap: 9px;
+            margin-bottom: 3px;
+        }
+
+        .resultat-ligne .heure {
+            color: var(--accent-secondary);
+            font-weight: 700;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .resultat-ligne .titre {
+            font-weight: 600;
+            font-size: 0.9rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .resultat-ligne .extrait {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .resultat-ligne mark {
+            background: rgba(245, 158, 11, 0.35);
+            color: var(--text-primary);
+            border-radius: 3px;
+            padding: 0 2px;
+        }
+
+        .recherche-info {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
         }
 
         .scene-ligne {
@@ -1721,6 +1803,10 @@
                 <span class="time">--:--</span>
                 <span class="title">--</span>
             </div>
+            <button class="home-btn" onclick="event.stopPropagation(); ouvrirRecherche()"
+                    title="Rechercher" aria-label="Rechercher dans le conducteur">
+                <i class="fas fa-search"></i>
+            </button>
             <button class="home-btn" onclick="event.stopPropagation(); goToHome()">
                 <i class="fas fa-home"></i> Accueil
             </button>
@@ -1733,7 +1819,10 @@
                     <span class="scene-nom" id="sceneNom"></span>
                     <i class="fas fa-layer-group"></i>
                 </div>
-                <div class="sequence-time" id="currentTime">--:--</div>
+                <div class="ligne-horaire">
+                    <div class="sequence-time" id="currentTime">--:--</div>
+                    <span class="ecart-horaire" id="ecartHoraire" style="display:none;"></span>
+                </div>
                 <div class="sequence-title" id="currentTitle">--</div>
                 <div class="sequence-people" id="currentPeople"></div>
             </div>
@@ -2017,6 +2106,24 @@
                     <i class="fas fa-copy"></i> Copier
                 </button>
                 <button class="modal-btn save" onclick="saveSequenceEdit()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="rechercheModal">
+        <div class="modal-content" style="max-width: 560px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-search"></i> Rechercher</h2>
+                <button class="modal-close" onclick="fermerRecherche()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <input type="text" id="rechercheInput" autocomplete="off"
+                           placeholder="Titre, intervenant, contenu, note...">
+                </div>
+                <div id="rechercheResultats"></div>
             </div>
         </div>
     </div>
@@ -2823,6 +2930,167 @@
         };
 
         // ==================== SEQUENCE NAVIGATION ====================
+        // ==================== ECART SUR L'HORAIRE ====================
+        // Sur scene, la question n'est pas « quelle heure est-il » mais « suis-je
+        // en retard ». On compare l'horaire de la sequence affichee a l'heure
+        // reelle et on annonce l'ecart.
+        //
+        // Les horaires rencontres sont varies : « 11:00 », « 18:30:00-19:30:00 »,
+        // « J2 07:00 ». On retient le premier HH:MM de la chaine.
+        function minutesDeLHoraire(timing) {
+            const trouve = String(timing || '').match(/(\d{1,2}):(\d{2})/);
+            if (!trouve) return null;
+            const heures = Number(trouve[1]), minutes = Number(trouve[2]);
+            if (heures > 23 || minutes > 59) return null;
+            return heures * 60 + minutes;
+        }
+
+        function majEcartHoraire() {
+            const puce = document.getElementById('ecartHoraire');
+            if (!puce) return;
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            const prevu = minutesDeLHoraire(seq?.timing);
+
+            if (prevu === null || prevu === undefined) { puce.style.display = 'none'; return; }
+
+            const maintenant = new Date();
+            const ecart = (maintenant.getHours() * 60 + maintenant.getMinutes()) - prevu;
+
+            // Au-dela de six heures, on regarde presque surement un autre jour ou
+            // une fiche d'information horodatee 00:0x. Annoncer « +14 h » n'aurait
+            // aucun sens : on se tait.
+            if (Math.abs(ecart) > 360) { puce.style.display = 'none'; return; }
+
+            puce.style.display = 'inline-block';
+            puce.className = 'ecart-horaire';
+
+            if (Math.abs(ecart) <= 2) {
+                puce.classList.add('a-lheure');
+                puce.textContent = 'à l\'heure';
+            } else if (ecart < 0) {
+                puce.classList.add('avance');
+                puce.textContent = `${-ecart} min d'avance`;
+            } else {
+                puce.classList.add(ecart >= 15 ? 'gros-retard' : 'retard');
+                puce.textContent = `+${ecart} min`;
+            }
+        }
+
+        // L'ecart bouge tout seul : sans cela il figerait sur une sequence
+        // affichee longtemps, ce qui est justement le cas quand on deborde.
+        setInterval(majEcartHoraire, 20000);
+
+        // ==================== RECHERCHE ====================
+        // Cherche dans tout ce qui est saisi : horaire, titre, intervenants,
+        // scene, questions et note rapide. Sans accents ni casse, parce que
+        // personne ne tape « Pâtisserie » correctement sur scene.
+        function normaliser(texte) {
+            return (texte || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function texteCherchable(seq) {
+            const morceaux = [seq.timing, seq.title, seq.people, seq.scene, seq.note];
+            (seq.questions || []).forEach(q => morceaux.push(q.text, q.content));
+            return morceaux.filter(Boolean).join(' \u00b7 ');
+        }
+
+        // Renvoie un extrait centre sur la premiere occurrence, avec le terme
+        // surligne. Le texte est insere via textContent, jamais en HTML.
+        function extraitAutour(texte, terme) {
+            const position = normaliser(texte).indexOf(terme);
+            if (position < 0) return null;
+            const debut = Math.max(0, position - 40);
+            const fin = Math.min(texte.length, position + terme.length + 60);
+            return {
+                avant: (debut > 0 ? '…' : '') + texte.slice(debut, position),
+                trouve: texte.slice(position, position + terme.length),
+                apres: texte.slice(position + terme.length, fin) + (fin < texte.length ? '…' : '')
+            };
+        }
+
+        function lancerRecherche() {
+            const saisie = document.getElementById('rechercheInput').value.trim();
+            const terme = normaliser(saisie);
+            const zone = document.getElementById('rechercheResultats');
+            zone.textContent = '';
+
+            if (terme.length < 2) {
+                const aide = document.createElement('p');
+                aide.className = 'recherche-info';
+                aide.textContent = 'Saisissez au moins deux caractères.';
+                zone.appendChild(aide);
+                return;
+            }
+
+            const { parNom } = scenesDeLEvenement();
+            const trouvees = [];
+            (currentEvent?.sequences || []).forEach((seq, i) => {
+                const texte = texteCherchable(seq);
+                if (normaliser(texte).includes(terme)) trouvees.push({ seq, i, texte });
+            });
+
+            const info = document.createElement('p');
+            info.className = 'recherche-info';
+            info.textContent = trouvees.length === 0
+                ? 'Aucune séquence ne contient ce terme.'
+                : `${trouvees.length} séquence${trouvees.length > 1 ? 's' : ''} sur ${currentEvent.sequences.length}`;
+            zone.appendChild(info);
+
+            trouvees.forEach(({ seq, i, texte }) => {
+                const ligne = document.createElement('button');
+                ligne.className = 'resultat-ligne';
+                const scene = parNom.get((seq.scene || '').trim());
+                if (scene) ligne.style.setProperty('--couleur-scene', scene.couleur);
+
+                const entete = document.createElement('div');
+                entete.className = 'entete';
+                const heure = document.createElement('span');
+                heure.className = 'heure';
+                heure.textContent = seq.timing || '--:--';
+                const titre = document.createElement('span');
+                titre.className = 'titre';
+                titre.textContent = seq.title || 'Sans titre';
+                entete.append(heure, titre);
+
+                const extrait = document.createElement('div');
+                extrait.className = 'extrait';
+                const morceau = extraitAutour(texte, terme);
+                if (morceau) {
+                    const surligne = document.createElement('mark');
+                    surligne.textContent = morceau.trouve;
+                    extrait.append(
+                        document.createTextNode(morceau.avant),
+                        surligne,
+                        document.createTextNode(morceau.apres));
+                }
+
+                ligne.append(entete, extrait);
+                ligne.addEventListener('click', () => {
+                    fermerRecherche();
+                    goToSequence(i);
+                });
+                zone.appendChild(ligne);
+            });
+        }
+
+        window.ouvrirRecherche = () => {
+            if (!currentEvent?.sequences?.length) return showToast('Aucune séquence');
+            const champ = document.getElementById('rechercheInput');
+            champ.value = '';
+            document.getElementById('rechercheResultats').textContent = '';
+            document.getElementById('rechercheModal').classList.add('active');
+            // Le clavier doit sortir tout de suite : on cherche en general au
+            // moment ou l'on en a besoin, pas avant.
+            setTimeout(() => champ.focus(), 80);
+        };
+
+        window.fermerRecherche = () => document.getElementById('rechercheModal').classList.remove('active');
+
+        document.getElementById('rechercheInput').addEventListener('input', lancerRecherche);
+
         // ==================== ORDRE DES SEQUENCES ====================
         // L'ordre d'un conducteur est celui voulu par son auteur, pas l'ordre
         // alphabetique des horaires. Sur un evenement de plusieurs jours, trier
@@ -3007,6 +3275,7 @@
 
             document.getElementById('currentPeople').textContent = seq.people || '';
             majBandeauScene();
+            majEcartHoraire();
 
             let content = '';
             (seq.questions || []).forEach(q => {
