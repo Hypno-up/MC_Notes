@@ -553,6 +553,57 @@
             opacity: 0.7;
         }
 
+        .badge-invite {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 1px 8px;
+            border-radius: 999px;
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: rgba(56, 189, 248, 0.2);
+            color: #38bdf8;
+            vertical-align: middle;
+        }
+
+        .event-partage-btn {
+            background: rgba(56, 189, 248, 0.18);
+            color: #38bdf8;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 11px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .partage-ligne {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 7px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .partage-ligne .adresse {
+            flex: 1;
+            min-width: 0;
+            font-size: 0.88rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .partage-ligne button {
+            background: rgba(239, 68, 68, 0.18);
+            color: var(--danger);
+            border: none;
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+        }
+
         .resultat-ligne {
             display: block;
             width: 100%;
@@ -2110,6 +2161,36 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="partageModal">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-plus"></i> Partager</h2>
+                <button class="modal-close" onclick="fermerPartage()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Ajouter une adresse e-mail</label>
+                    <input type="email" id="partageEmail" autocomplete="off"
+                           placeholder="collegue@exemple.fr">
+                </div>
+                <button class="modal-btn save" style="width:100%; margin-bottom:14px;"
+                        onclick="ajouterPartage()">Ajouter</button>
+                <div id="listePartages"></div>
+                <div style="margin-top:14px; padding:12px; background:rgba(66,133,244,0.1);
+                            border-radius:8px; border-left:3px solid #4285f4;">
+                    <small style="color:#4285f4;">
+                        La personne doit avoir un compte MCNote avec <strong>cette adresse
+                        exacte</strong>. Elle verra le conducteur, pourra valider les
+                        séquences et prendre des notes, mais ne pourra ni le renommer,
+                        ni changer sa feuille source, ni le supprimer.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="rechercheModal">
         <div class="modal-content" style="max-width: 560px;">
             <div class="modal-header">
@@ -2345,16 +2426,38 @@
         // supprimé pouvait être réaffiché par un instantané antérieur encore en vol.
         // Le compteur de génération fait gagner le plus récent, et le try/catch
         // garantit que l'écran se met à jour même si une lecture échoue.
-        let generationEvents = 0;
+        // Deux sources alimentent la liste : mes evenements, et ceux qu'on m'a
+        // partages. Chacune a son propre compteur de generation — un compteur
+        // commun ferait qu'un instantane en retard sur une source annulerait
+        // celui de l'autre.
+        const generationsEvenements = { miens: 0, partages: 0 };
+        const evenementsParSource = { miens: null, partages: null };
 
-        async function loadEvents() {
-            const q = query(collection(db, "events"), where("owner", "==", currentUser.uid));
-            onSnapshot(q, async (snapshot) => {
-                const generation = ++generationEvents;
+        // Les noms viennent de la feuille ou de la saisie : ils sont interpoles
+        // dans du HTML, donc echappes.
+        function echapper(texte) {
+            const zone = document.createElement('div');
+            zone.textContent = texte ?? '';
+            return zone.innerHTML;
+        }
+
+        function fusionnerEvenements() {
+            const parId = new Map();
+            for (const cle of ['partages', 'miens']) {
+                for (const ev of (evenementsParSource[cle] || [])) parId.set(ev.id, ev);
+            }
+            events = [...parId.values()];
+            renderEventsGrid();
+        }
+
+        function ecouterEvenements(requete, cle) {
+            onSnapshot(requete, async (snapshot) => {
+                const generation = ++generationsEvenements[cle];
                 const liste = [];
                 try {
                     for (const docSnap of snapshot.docs) {
                         const data = { id: docSnap.id, ...docSnap.data() };
+                        data.invite = data.owner !== currentUser.uid;
                         const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
                         data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
                         trierSequences(data.sequences);
@@ -2369,13 +2472,26 @@
                     showToast('Lecture incomplète, affichage conservé : ' + (e.code || e.message));
                     return;
                 }
-                if (generation !== generationEvents) return; // un instantané plus récent a pris la main
-                events = liste;
-                renderEventsGrid();
+                if (generation !== generationsEvenements[cle]) return; // un instantané plus récent a pris la main
+                evenementsParSource[cle] = liste;
+                fusionnerEvenements();
             }, (e) => {
                 console.error('loadEvents (listener):', e);
                 showToast('Erreur de lecture : ' + (e.code || e.message));
             });
+        }
+
+        async function loadEvents() {
+            ecouterEvenements(
+                query(collection(db, "events"), where("owner", "==", currentUser.uid)),
+                'miens');
+
+            const monEmail = (currentUser.email || '').toLowerCase();
+            if (monEmail) {
+                ecouterEvenements(
+                    query(collection(db, "events"), where("partages", "array-contains", monEmail)),
+                    'partages');
+            }
         }
 
         function renderEventsGrid() {
@@ -2397,6 +2513,9 @@
                 const isGsheet = e.sourceType === 'gsheet';
                 const iconClass = isGsheet ? 'fab fa-google-drive' : 'fas fa-calendar-check';
                 const metaText = isGsheet ? `${validated}/${count} séq. • Google Sheets` : `${validated}/${count} séquences`;
+                // Sur un événement partagé on n'est qu'invité : renommer, changer
+                // la source, gérer les partages ou supprimer reste au propriétaire.
+                const proprietaire = !e.invite;
                 
                 html += `
                     <div class="event-card" onclick="openEvent('${e.id}')">
@@ -2405,20 +2524,23 @@
                                 <i class="${iconClass}"></i>
                             </div>
                             <div>
-                                <div class="event-card-name">${e.name}</div>
+                                <div class="event-card-name">${echapper(e.name)}${e.invite ? '<span class="badge-invite">partagé</span>' : ''}</div>
                                 <div class="event-card-meta">${metaText}</div>
                             </div>
                         </div>
                         <div class="event-card-actions">
-                            ${isGsheet ? `<button class="event-source-btn" onclick="event.stopPropagation(); changerFeuilleSource('${e.id}')" title="Changer la feuille source">
+                            ${proprietaire ? `<button class="event-partage-btn" onclick="event.stopPropagation(); ouvrirPartage('${e.id}')" title="Partager">
+                                <i class="fas fa-user-plus"></i>
+                            </button>` : ''}
+                            ${proprietaire && isGsheet ? `<button class="event-source-btn" onclick="event.stopPropagation(); changerFeuilleSource('${e.id}')" title="Changer la feuille source">
                                 <i class="fas fa-link"></i>
                             </button>` : ''}
                             ${isGsheet ? `<button class="event-refresh-btn" onclick="event.stopPropagation(); refreshEvent('${e.id}')" title="Rafraîchir depuis Google Sheets">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : ''}
-                            <button class="event-delete-btn" onclick="event.stopPropagation(); deleteEvent('${e.id}')">
+                            ${proprietaire ? `<button class="event-delete-btn" onclick="event.stopPropagation(); deleteEvent('${e.id}')">
                                 <i class="fas fa-trash"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                     </div>
                 `;
@@ -2532,6 +2654,100 @@
                 bouton.disabled = false;
             }
         };
+
+        // ==================== PARTAGE D'UN EVENEMENT ====================
+        // Le partage se fait par adresse e-mail, comparee cote regles a
+        // request.auth.token.email. Aucune correspondance adresse -> identifiant
+        // n'est donc necessaire, ce qui evite d'exposer l'annuaire des comptes.
+        let evenementPartageEnCours = null;
+
+        function afficherListePartages() {
+            const ev = events.find(e => e.id === evenementPartageEnCours);
+            const zone = document.getElementById('listePartages');
+            zone.textContent = '';
+            const adresses = ev?.partages || [];
+
+            if (!adresses.length) {
+                const vide = document.createElement('p');
+                vide.style.cssText = 'color:var(--text-secondary);font-size:0.85rem;';
+                vide.textContent = "Cet événement n'est partagé avec personne.";
+                zone.appendChild(vide);
+                return;
+            }
+
+            adresses.forEach(adresse => {
+                const ligne = document.createElement('div');
+                ligne.className = 'partage-ligne';
+                const texte = document.createElement('span');
+                texte.className = 'adresse';
+                texte.textContent = adresse;
+                const retirer = document.createElement('button');
+                retirer.innerHTML = '<i class="fas fa-times"></i>';
+                retirer.title = 'Retirer';
+                retirer.addEventListener('click', () => retirerPartage(adresse));
+                ligne.append(texte, retirer);
+                zone.appendChild(ligne);
+            });
+        }
+
+        window.ouvrirPartage = (id) => {
+            const ev = events.find(e => e.id === id);
+            if (!ev || ev.invite) return;
+            evenementPartageEnCours = id;
+            document.getElementById('partageEmail').value = '';
+            afficherListePartages();
+            document.getElementById('partageModal').classList.add('active');
+        };
+
+        window.fermerPartage = () => {
+            document.getElementById('partageModal').classList.remove('active');
+            evenementPartageEnCours = null;
+        };
+
+        async function enregistrerPartages(adresses) {
+            const id = evenementPartageEnCours;
+            const ev = events.find(e => e.id === id);
+            try {
+                await updateDoc(doc(db, "events", id), { partages: adresses });
+                ev.partages = adresses;
+                afficherListePartages();
+                renderEventsGrid();
+            } catch (e) {
+                console.error('partages:', e);
+                showToast('Enregistrement impossible : ' + (e.code || e.message));
+            }
+        }
+
+        window.ajouterPartage = async () => {
+            const champ = document.getElementById('partageEmail');
+            const adresse = champ.value.trim().toLowerCase();
+            const ev = events.find(e => e.id === evenementPartageEnCours);
+            if (!ev) return;
+
+            if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adresse)) {
+                return showToast('Adresse e-mail invalide');
+            }
+            if (adresse === (currentUser.email || '').toLowerCase()) {
+                return showToast("C'est votre propre adresse");
+            }
+            const adresses = ev.partages || [];
+            if (adresses.includes(adresse)) return showToast('Déjà partagé avec cette adresse');
+
+            champ.value = '';
+            await enregistrerPartages([...adresses, adresse]);
+            showToast('Partagé avec ' + adresse);
+        };
+
+        async function retirerPartage(adresse) {
+            const ev = events.find(e => e.id === evenementPartageEnCours);
+            if (!ev) return;
+            await enregistrerPartages((ev.partages || []).filter(a => a !== adresse));
+            showToast('Accès retiré');
+        }
+
+        document.getElementById('partageEmail').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); ajouterPartage(); }
+        });
 
         window.openCreateEventModal = () => {
             document.getElementById('createEventModal').classList.add('active');
@@ -4252,7 +4468,11 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
 
                 trierSequences(existing);
                 eventData.sequences = existing;
-                await updateDoc(doc(db, "events", id), { lastRefresh: new Date() });
+                // Un invité n'a pas le droit d'écrire sur le document parent :
+                // tenter l'horodatage ferait échouer toute la synchronisation.
+                if (!eventData.invite) {
+                    await updateDoc(doc(db, "events", id), { lastRefresh: new Date() });
+                }
 
                 if (currentEvent && currentEvent.id === id) {
                     currentEvent.sequences = existing;

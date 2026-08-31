@@ -3,13 +3,14 @@ rules_version = '2';
 // Règles Firestore de MCNote.
 //
 // Chaque événement et chaque bloc-notes appartient à un compte, via son champ
-// `owner`. Les sous-collections n'ont pas de propriétaire propre : elles
-// héritent de celui de leur parent, vérifié par un get().
+// `owner`. Il peut en outre être partagé, via une liste d'adresses e-mail dans
+// `partages`. On compare à `request.auth.token.email`, présent sur les comptes
+// e-mail/mot de passe : aucune correspondance adresse → identifiant n'est donc
+// nécessaire côté application.
 //
-// Ce get() coûte une lecture par document lu ou écrit. C'est le prix de
-// l'isolation : sans lui, tout compte authentifié lisait les conducteurs des
-// autres. Les volumes en jeu — quelques dizaines de séquences par événement —
-// le rendent négligeable.
+// Les sous-collections n'ont pas de droits propres : elles héritent de ceux de
+// leur parent, vérifiés par un get(). Ce get() coûte une lecture par document
+// lu ou écrit — c'est le prix de l'isolation.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -18,36 +19,50 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == donnees.owner;
     }
 
+    function estPartageAvecMoi(donnees) {
+      return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email.lower() in donnees.get('partages', []);
+    }
+
+    function peutVoir(donnees) {
+      return estProprietaire(donnees) || estPartageAvecMoi(donnees);
+    }
+
     // Le parent doit exister : une sous-collection orpheline, laissée par une
     // suppression ancienne, n'est accessible à personne. L'application supprime
     // toujours les enfants avant le parent, donc le cas ne se présente pas.
-    function proprietaireDuParent(chemin) {
-      return request.auth != null
-          && exists(chemin)
-          && get(chemin).data.owner == request.auth.uid;
+    function parentAccessible(chemin) {
+      return request.auth != null && exists(chemin) && peutVoir(get(chemin).data);
     }
 
     match /events/{eventId} {
-      allow read, write: if estProprietaire(resource.data);
+      allow read: if peutVoir(resource.data);
+      // Renommer, changer la feuille source, gérer les partages ou supprimer
+      // reste au seul propriétaire.
+      allow update, delete: if estProprietaire(resource.data);
       allow create: if estProprietaire(request.resource.data);
 
+      // Les invités travaillent sur le conducteur : ils valident les séquences
+      // et prennent des notes. L'écriture leur est donc ouverte ici.
       match /sequences/{sequenceId} {
-        allow read, write: if proprietaireDuParent(
+        allow read, write: if parentAccessible(
           /databases/$(database)/documents/events/$(eventId));
       }
 
       match /categories/{categoryId} {
-        allow read, write: if proprietaireDuParent(
+        allow read, write: if parentAccessible(
           /databases/$(database)/documents/events/$(eventId));
       }
     }
 
     match /notebooks/{notebookId} {
-      allow read, write: if estProprietaire(resource.data);
+      allow read: if peutVoir(resource.data);
+      allow update, delete: if estProprietaire(resource.data);
       allow create: if estProprietaire(request.resource.data);
 
       match /notes/{noteId} {
-        allow read, write: if proprietaireDuParent(
+        allow read, write: if parentAccessible(
           /databases/$(database)/documents/notebooks/$(notebookId));
       }
     }

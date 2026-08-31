@@ -175,7 +175,24 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ---
 
-## 8. Sécurité
+## 8. Partage d'un événement
+
+Bouton 👤+ sur la carte, réservé au propriétaire. Le partage se fait **par
+adresse e-mail** : les règles la comparent à `request.auth.token.email`, ce qui
+évite toute correspondance adresse → identifiant et n'expose donc pas l'annuaire
+des comptes. La comparaison ignore la casse.
+
+L'invité voit le conducteur dans sa liste, marqué d'un badge « partagé ». Il
+peut **valider les séquences et prendre des notes** — c'est le but d'un
+conducteur partagé. Il ne peut ni renommer l'événement, ni changer sa feuille
+source, ni gérer les partages, ni supprimer.
+
+Deux conséquences techniques : la liste d'accueil écoute **deux requêtes**
+(mes événements et ceux partagés avec moi), chacune avec son propre compteur de
+génération ; et la synchronisation n'écrit l'horodatage `lastRefresh` que si
+l'on est propriétaire, sinon elle échouerait entièrement pour un invité.
+
+## 9. Sécurité
 
 Chaque événement et chaque bloc-notes porte un champ `owner`. Les
 sous-collections n'ont pas de propriétaire propre : elles héritent de celui de
@@ -193,7 +210,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 > suppressions ne sont plus accessibles depuis l'application. Elles y étaient
 > déjà invisibles ; leur nettoyage se fait depuis la console Firebase.
 
-## 9. Robustesse terrain
+## 10. Robustesse terrain
 
 | Fonction | Détail |
 |---|---|
@@ -204,7 +221,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ---
 
-## 10. Divers
+## 11. Divers
 
 - Toasts de notification (`showToast`)
 - Raccourcis clavier : ↑ ↓ (navigation), `v` (valider), `Espace` (prompteur), ← → (notes), `Échap` (fermer)
@@ -213,7 +230,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ---
 
-## 11. Ce qui reste à faire
+## 12. Ce qui reste à faire
 
 ### Bloquant avant mise en production
 - [ ] Ajouter `localhost` aux domaines autorisés dans Firebase → Authentication → Settings (sinon connexion impossible dans l'APK)
@@ -225,5 +242,4 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ### Améliorations souhaitables
 - [ ] Export PDF du conducteur
-- [ ] Partage d'un événement entre plusieurs utilisateurs
 - [ ] Sortir le CSS et le JS de `index.html` (fichier unique de 3 400 lignes)
