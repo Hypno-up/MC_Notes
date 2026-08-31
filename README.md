@@ -14,6 +14,8 @@ Web (Netlify) + application Android (Capacitor).
 index.html                        Toute l'application (HTML + CSS + JS module)
 netlify/functions/
   gsheet-proxy.js                 Récupère une feuille Google en CSV (contourne le CORS)
+  sheet-append.js                 Ajoute une ligne dans la feuille, via Apps Script
+apps-script/Code.gs               Script à déployer côté Google (voir son en-tête)
 capacitor.config.json             Configuration de l'app Android
 android/                          Projet Android généré par Capacitor
 resources/icon.png, splash.png    Sources des icônes (1024 et 2732 px)
@@ -88,8 +90,13 @@ même `index.html`. Tout push sur `main` déclenche un déploiement.
 
 **Variables d'environnement requises :**
 
-Aucune. Le proxy Google Sheets n'appelle que des feuilles publiées publiquement
-et ne manipule aucun secret.
+| Variable | Usage |
+|---|---|
+| `APPS_SCRIPT_URL` | URL `/exec` du script `apps-script/Code.gs` — facultative |
+| `APPS_SCRIPT_JETON` | Jeton partagé avec ce script — facultative |
+
+Sans elles, l'écriture directe dans la feuille est désactivée et l'application
+retombe sur le presse-papiers. Le proxy Google Sheets ne manipule aucun secret.
 
 La configuration Firebase côté client est en clair dans `index.html` : c'est
 normal et sans risque, la sécurité repose sur les règles Firestore.

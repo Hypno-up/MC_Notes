@@ -175,7 +175,28 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ---
 
-## 8. Export du conducteur
+## 8. Écriture dans la feuille Google Sheets
+
+Une séquence ajoutée avec **＋** peut être **reportée directement dans la
+feuille**, si le relais est configuré. Sinon elle part dans le presse-papiers,
+comme avant — aucun réglage n'est obligatoire.
+
+Chaîne : application → fonction Netlify `sheet-append` → script Apps Script →
+feuille. Le jeton reste dans les variables d'environnement Netlify : une
+application web est du code client, tout secret qu'elle porterait serait
+lisible. Les valeurs sont posées **d'après le nom des colonnes**, jamais leur
+position, donc une feuille réordonnée reste correctement alimentée.
+
+Après une écriture réussie, la séquence cesse d'être marquée « locale » et
+reçoit sa `cleSource` : sans cela, la synchronisation suivante ajouterait un
+second exemplaire à côté d'elle.
+
+**Installation** — voir l'en-tête de [`apps-script/Code.gs`](apps-script/Code.gs).
+En résumé : déployer le script en application web exécutée en votre nom,
+accessible à tout le monde, puis renseigner dans Netlify `APPS_SCRIPT_URL` et
+`APPS_SCRIPT_JETON`. Aucune clé Google ne circule.
+
+## 9. Export du conducteur
 
 Bouton 📄 sur la carte. Le conducteur est reconstruit en **document** — fond
 blanc, encre noire, aucune trace de l'interface — puis confié au système
@@ -190,7 +211,7 @@ Le WebView Android ignore `window.print()`. `MainActivity` expose donc un pont
 minimal vers le service d'impression du système ; sur le web, `window.print()`
 suffit.
 
-## 9. Partage d'un événement
+## 10. Partage d'un événement
 
 Bouton 👤+ sur la carte, réservé au propriétaire. Le partage se fait **par
 adresse e-mail** : les règles la comparent à `request.auth.token.email`, ce qui
@@ -207,7 +228,7 @@ Deux conséquences techniques : la liste d'accueil écoute **deux requêtes**
 génération ; et la synchronisation n'écrit l'horodatage `lastRefresh` que si
 l'on est propriétaire, sinon elle échouerait entièrement pour un invité.
 
-## 10. Sécurité
+## 11. Sécurité
 
 Chaque événement et chaque bloc-notes porte un champ `owner`. Les
 sous-collections n'ont pas de propriétaire propre : elles héritent de celui de
@@ -225,7 +246,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 > suppressions ne sont plus accessibles depuis l'application. Elles y étaient
 > déjà invisibles ; leur nettoyage se fait depuis la console Firebase.
 
-## 11. Robustesse terrain
+## 12. Robustesse terrain
 
 | Fonction | Détail |
 |---|---|
@@ -236,7 +257,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ---
 
-## 12. Divers
+## 13. Divers
 
 - Toasts de notification (`showToast`)
 - Raccourcis clavier : ↑ ↓ (navigation), `v` (valider), `Espace` (prompteur), ← → (notes), `Échap` (fermer)
@@ -245,7 +266,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ---
 
-## 13. Ce qui reste à faire
+## 14. Ce qui reste à faire
 
 ### Bloquant avant mise en production
 - [ ] Ajouter `localhost` aux domaines autorisés dans Firebase → Authentication → Settings (sinon connexion impossible dans l'APK)

@@ -2755,6 +2755,52 @@
             }
         };
 
+        // ==================== ECRITURE DANS LA FEUILLE ====================
+        // Une sequence ajoutee sur le telephone n'existe pas dans la feuille.
+        // Si le relais Apps Script est configure, on l'y ecrit ; sinon on
+        // retombe sur le presse-papiers, qui ne demande aucune installation.
+        async function reporterDansLaFeuille(idSequence, valeurs) {
+            try {
+                const reponse = await fetch(API_BASE + '/.netlify/functions/sheet-append', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sourceUrl: currentEvent.sourceUrl, valeurs })
+                });
+                const resultat = await reponse.json();
+
+                if (resultat.success) {
+                    // La ligne existe maintenant dans la feuille : la sequence
+                    // doit cesser d'etre « locale », sinon la synchronisation
+                    // ajouterait un second exemplaire a cote d'elle.
+                    const cleSource = `${valeurs.timing}|${valeurs.title}`;
+                    await updateDoc(doc(db, "events", currentEvent.id, "sequences", idSequence),
+                        { origine: 'feuille', cleSource });
+                    const seq = currentEvent.sequences.find(s => s.id === idSequence);
+                    if (seq) { seq.origine = 'feuille'; seq.cleSource = cleSource; }
+                    renderCurrentSequence();
+                    showToast('Séquence ajoutée et écrite dans la feuille');
+                    return;
+                }
+
+                if (resultat.error && resultat.error !== 'non_configure') {
+                    console.warn('sheet-append:', resultat.error);
+                    showToast('Écriture refusée : ' + String(resultat.error).slice(0, 60));
+                }
+            } catch (e) {
+                console.warn('sheet-append injoignable:', e);
+            }
+
+            // Repli : la ligne part dans le presse-papiers, un collage suffit.
+            if (await copierLigneFeuille([
+                valeurs.timing, valeurs.title, valeurs.people,
+                valeurs.question_text, valeurs.question_content, valeurs.scene
+            ])) {
+                showToast('Séquence ajoutée — ligne copiée pour la feuille');
+            } else {
+                showToast('Séquence ajoutée');
+            }
+        }
+
         // ==================== EXPORT DU CONDUCTEUR ====================
         // Le conducteur est reconstruit en document imprimable, puis confie au
         // systeme. Sur le web c'est window.print() ; dans l'application le
@@ -3898,14 +3944,14 @@
                     renderEventsGrid();
                     closeSequenceEditModal();
 
-                    // L'application ne sait pas ecrire dans la feuille. On met la
-                    // ligne dans le presse-papiers pour qu'un simple collage la
-                    // reporte a l'identique, colonnes comprises.
-                    if (currentEvent.sourceType === 'gsheet'
-                        && await copierLigneFeuille([timing, title, people, subtitle, content, scene])) {
-                        showToast('Séquence ajoutée — ligne copiée pour la feuille');
-                    } else {
+                    if (currentEvent.sourceType !== 'gsheet') {
                         showToast('Séquence ajoutée');
+                    } else {
+                        await reporterDansLaFeuille(ref.id, {
+                            timing, title, people, scene,
+                            question_text: subtitle,
+                            question_content: content
+                        });
                     }
                 } else {
                     const seq = currentEvent.sequences[currentSequenceIndex];
