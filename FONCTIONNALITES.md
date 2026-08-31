@@ -175,7 +175,22 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ---
 
-## 8. Partage d'un événement
+## 8. Export du conducteur
+
+Bouton 📄 sur la carte. Le conducteur est reconstruit en **document** — fond
+blanc, encre noire, aucune trace de l'interface — puis confié au système
+d'impression, qui sait aussi bien imprimer qu'enregistrer un PDF.
+
+Contient le nom de l'événement, le nombre de séquences et de validations, la
+date d'édition, puis chaque séquence sous son intertitre de scène : horaire,
+titre, coche si validée, intervenants, questions et note rapide. Une séquence
+n'est jamais coupée entre deux pages.
+
+Le WebView Android ignore `window.print()`. `MainActivity` expose donc un pont
+minimal vers le service d'impression du système ; sur le web, `window.print()`
+suffit.
+
+## 9. Partage d'un événement
 
 Bouton 👤+ sur la carte, réservé au propriétaire. Le partage se fait **par
 adresse e-mail** : les règles la comparent à `request.auth.token.email`, ce qui
@@ -192,7 +207,7 @@ Deux conséquences techniques : la liste d'accueil écoute **deux requêtes**
 génération ; et la synchronisation n'écrit l'horodatage `lastRefresh` que si
 l'on est propriétaire, sinon elle échouerait entièrement pour un invité.
 
-## 9. Sécurité
+## 10. Sécurité
 
 Chaque événement et chaque bloc-notes porte un champ `owner`. Les
 sous-collections n'ont pas de propriétaire propre : elles héritent de celui de
@@ -210,7 +225,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 > suppressions ne sont plus accessibles depuis l'application. Elles y étaient
 > déjà invisibles ; leur nettoyage se fait depuis la console Firebase.
 
-## 10. Robustesse terrain
+## 11. Robustesse terrain
 
 | Fonction | Détail |
 |---|---|
@@ -221,7 +236,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ---
 
-## 11. Divers
+## 12. Divers
 
 - Toasts de notification (`showToast`)
 - Raccourcis clavier : ↑ ↓ (navigation), `v` (valider), `Espace` (prompteur), ← → (notes), `Échap` (fermer)
@@ -230,7 +245,7 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 
 ---
 
-## 12. Ce qui reste à faire
+## 13. Ce qui reste à faire
 
 ### Bloquant avant mise en production
 - [ ] Ajouter `localhost` aux domaines autorisés dans Firebase → Authentication → Settings (sinon connexion impossible dans l'APK)
@@ -241,5 +256,4 @@ compte en lecture, écriture et suppression, refus anonyme, refus de créer un
 - [ ] Horodatage visible de la dernière synchro
 
 ### Améliorations souhaitables
-- [ ] Export PDF du conducteur
 - [ ] Sortir le CSS et le JS de `index.html` (fichier unique de 3 400 lignes)

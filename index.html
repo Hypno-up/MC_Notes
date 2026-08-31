@@ -553,6 +553,101 @@
             opacity: 0.7;
         }
 
+        #vueImpression { display: none; }
+
+        .event-export-btn {
+            background: rgba(239, 68, 68, 0.16);
+            color: #f87171;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 11px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        /* Le conducteur imprime est un document, pas une capture de l'écran :
+           fond blanc, encre noire, et rien de l'interface. */
+        @media print {
+            body > *:not(#vueImpression) { display: none !important; }
+            body { background: #fff !important; }
+
+            #vueImpression {
+                display: block !important;
+                color: #000;
+                background: #fff;
+                font-size: 11pt;
+                line-height: 1.45;
+                padding: 0;
+            }
+
+            #vueImpression .titre-doc {
+                font-size: 20pt;
+                font-weight: 700;
+                margin-bottom: 2mm;
+            }
+
+            #vueImpression .sous-titre-doc {
+                font-size: 10pt;
+                color: #444;
+                margin-bottom: 8mm;
+                padding-bottom: 3mm;
+                border-bottom: 1pt solid #999;
+            }
+
+            #vueImpression .scene-titre {
+                font-size: 13pt;
+                font-weight: 700;
+                margin: 7mm 0 3mm;
+                padding: 1.5mm 3mm;
+                background: #eee;
+                border-left: 3pt solid #000;
+                break-after: avoid;
+            }
+
+            /* Une séquence ne doit jamais être coupée entre deux pages :
+               à l'usage, retrouver la fin d'une annonce au verso est pénible. */
+            #vueImpression .seq {
+                break-inside: avoid;
+                margin-bottom: 5mm;
+                padding-bottom: 3mm;
+                border-bottom: 0.5pt dotted #bbb;
+            }
+
+            #vueImpression .seq-entete {
+                font-weight: 700;
+                font-size: 12pt;
+                margin-bottom: 1mm;
+            }
+
+            #vueImpression .seq-heure {
+                display: inline-block;
+                min-width: 20mm;
+            }
+
+            #vueImpression .seq-gens {
+                font-style: italic;
+                color: #333;
+                margin-bottom: 1.5mm;
+            }
+
+            #vueImpression .seq-q { margin-bottom: 2mm; }
+            #vueImpression .seq-q .intitule { font-weight: 600; }
+            #vueImpression .seq-q .corps { white-space: pre-wrap; }
+
+            #vueImpression .seq-note {
+                margin-top: 2mm;
+                padding: 2mm 3mm;
+                border: 0.5pt solid #999;
+                background: #f6f6f6;
+                white-space: pre-wrap;
+            }
+
+            #vueImpression .coche {
+                float: right;
+                font-weight: 700;
+            }
+        }
+
         .badge-invite {
             display: inline-block;
             margin-left: 8px;
@@ -2161,6 +2256,8 @@
         </div>
     </div>
 
+    <div id="vueImpression"></div>
+
     <div class="modal-overlay" id="partageModal">
         <div class="modal-content" style="max-width: 520px;">
             <div class="modal-header">
@@ -2535,6 +2632,9 @@
                             ${proprietaire && isGsheet ? `<button class="event-source-btn" onclick="event.stopPropagation(); changerFeuilleSource('${e.id}')" title="Changer la feuille source">
                                 <i class="fas fa-link"></i>
                             </button>` : ''}
+                            <button class="event-export-btn" onclick="event.stopPropagation(); exporterConducteur('${e.id}')" title="Exporter en PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
                             ${isGsheet ? `<button class="event-refresh-btn" onclick="event.stopPropagation(); refreshEvent('${e.id}')" title="Rafraîchir depuis Google Sheets">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : ''}
@@ -2652,6 +2752,111 @@
                 etat.textContent = 'Enregistrement impossible : ' + (e.code || e.message);
             } finally {
                 bouton.disabled = false;
+            }
+        };
+
+        // ==================== EXPORT DU CONDUCTEUR ====================
+        // Le conducteur est reconstruit en document imprimable, puis confie au
+        // systeme. Sur le web c'est window.print() ; dans l'application le
+        // WebView Android l'ignore, d'ou le pont expose par MainActivity.
+        function construireVueImpression(ev) {
+            const zone = document.getElementById('vueImpression');
+            zone.textContent = '';
+
+            const titre = document.createElement('div');
+            titre.className = 'titre-doc';
+            titre.textContent = ev.name || 'Conducteur';
+
+            const valides = (ev.sequences || []).filter(s => s.validated).length;
+            const sousTitre = document.createElement('div');
+            sousTitre.className = 'sous-titre-doc';
+            sousTitre.textContent =
+                `${(ev.sequences || []).length} séquences · ${valides} validées · `
+                + `édité le ${new Date().toLocaleDateString('fr-FR')} à `
+                + `${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+
+            zone.append(titre, sousTitre);
+
+            let sceneAffichee = null;
+            (ev.sequences || []).forEach(seq => {
+                const nomScene = (seq.scene || '').trim();
+                if (nomScene && nomScene !== sceneAffichee) {
+                    sceneAffichee = nomScene;
+                    const enTete = document.createElement('div');
+                    enTete.className = 'scene-titre';
+                    enTete.textContent = nomScene;
+                    zone.appendChild(enTete);
+                }
+
+                const bloc = document.createElement('div');
+                bloc.className = 'seq';
+
+                const entete = document.createElement('div');
+                entete.className = 'seq-entete';
+                const heure = document.createElement('span');
+                heure.className = 'seq-heure';
+                heure.textContent = seq.timing || '--:--';
+                entete.appendChild(heure);
+                entete.appendChild(document.createTextNode(seq.title || 'Sans titre'));
+                if (seq.validated) {
+                    const coche = document.createElement('span');
+                    coche.className = 'coche';
+                    coche.textContent = '\u2713';
+                    entete.appendChild(coche);
+                }
+                bloc.appendChild(entete);
+
+                if (seq.people) {
+                    const gens = document.createElement('div');
+                    gens.className = 'seq-gens';
+                    gens.textContent = seq.people;
+                    bloc.appendChild(gens);
+                }
+
+                (seq.questions || []).forEach(q => {
+                    if (!q.text && !q.content) return;
+                    const question = document.createElement('div');
+                    question.className = 'seq-q';
+                    if (q.text) {
+                        const intitule = document.createElement('div');
+                        intitule.className = 'intitule';
+                        intitule.textContent = q.text;
+                        question.appendChild(intitule);
+                    }
+                    if (q.content) {
+                        const corps = document.createElement('div');
+                        corps.className = 'corps';
+                        corps.textContent = q.content;
+                        question.appendChild(corps);
+                    }
+                    bloc.appendChild(question);
+                });
+
+                if (seq.note) {
+                    const note = document.createElement('div');
+                    note.className = 'seq-note';
+                    note.textContent = 'Note : ' + seq.note;
+                    bloc.appendChild(note);
+                }
+
+                zone.appendChild(bloc);
+            });
+        }
+
+        window.exporterConducteur = (id) => {
+            const ev = events.find(e => e.id === id);
+            if (!ev) return;
+            if (!ev.sequences?.length) return showToast('Aucune séquence à exporter');
+
+            construireVueImpression(ev);
+
+            const pontAndroid = window.ImpressionAndroid;
+            if (pontAndroid && typeof pontAndroid.imprimer === 'function') {
+                pontAndroid.imprimer(ev.name || 'Conducteur');
+            } else if (typeof window.print === 'function') {
+                window.print();
+            } else {
+                showToast("L'impression n'est pas disponible ici");
             }
         };
 
