@@ -10,9 +10,9 @@ et attend **un fichier qu'il importe tel quel dans MC Note**, puis qu'il lit sur
 son téléphone, sur scène. Tout ce que tu produis doit donc être juste, lisible
 d'un coup d'œil, et conforme au format ci-dessous au caractère près.
 
-Livrable : **un fichier CSV** (et, si l'utilisateur travaille dans Google
-Sheets, le même contenu à coller dans sa feuille), **validé par le script
-fourni**, accompagné d'un court récapitulatif.
+Livrable : **un fichier CSV par jour d'événement** (et, si l'utilisateur
+travaille dans Google Sheets, le même contenu à coller dans sa feuille),
+**validé**, accompagné d'un court récapitulatif.
 
 ---
 
@@ -37,24 +37,34 @@ timing,title,people,question_text,question_content,scene
 
 \* Une ligne sans `timing` ni `title` est ignorée par l'application.
 
-Un modèle vierge et un exemple complet sont dans `modeles/`.
-
 ### Bloc-notes
 
 ```
 title,content
 ```
 
-Une ligne par note. Pour les anecdotes, citations, blagues, remerciements
-sponsors, infos pratiques — tout ce qui ne suit pas un horaire.
+Une ligne par note : anecdotes, citations, remerciements sponsors, infos
+pratiques — tout ce qui ne suit pas un horaire.
 
 ### Encodage
 
 - **UTF-8**, séparateur **virgule**.
 - Toute cellule contenant une virgule, un guillemet ou un retour à la ligne est
-  **entourée de guillemets doubles** ; un guillemet intérieur est doublé (`""`).
+  **entourée de guillemets doubles** ; un guillemet intérieur est **doublé**.
 - Écris le fichier avec un vrai générateur CSV (module `csv` de Python), jamais
   en concaténant des chaînes : c'est la première cause de fichier cassé.
+
+À quoi ressemble une cellule sur plusieurs lignes, avec un guillemet intérieur :
+
+```
+11:00,Dégustation commentée,Julien Roux,Sommelier,"Annonce : « Place à la dégustation. »
+
+• 6 vins de Loire
+• Le vigneron dit : ""on goûte d'abord le blanc""",Samedi matin
+```
+
+`modeles/` contient un modèle vierge, un modèle de bloc-notes et un exemple
+complet d'une soirée.
 
 ---
 
@@ -62,20 +72,33 @@ sponsors, infos pratiques — tout ce qui ne suit pas un horaire.
 
 Chacune vient d'un problème réellement rencontré.
 
-1. **L'ordre des lignes est l'ordre du conducteur.** MC Note suit la feuille,
-   pas l'ordre alphabétique des horaires. Range les lignes dans l'ordre où elles
-   se dérouleront. Sur plusieurs jours : tout le lundi, puis tout le mardi.
+1. **Un fichier par jour.** Chaque jour devient un événement distinct dans
+   MC Note (« Salon — samedi », « Salon — dimanche »). C'est ainsi que
+   l'utilisateur travaille, et cela évite deux pièges : deux séquences du même
+   nom à la même heure qui fusionneraient (l'ouverture de 10:00 existe les deux
+   jours), et un indicateur d'avance/retard qui comparerait l'heure réelle à
+   l'horaire d'un autre jour. Chaque fichier est autonome : répète-y la fiche
+   événement, les contacts et les partenaires, et limite ses « Points à
+   confirmer » à son jour. Ne fais un seul fichier pour plusieurs jours que
+   si l'utilisateur le demande : ajoute alors le jour dans **chaque titre** et
+   **chaque nom de scène** (« Ouverture — samedi », « Samedi matin »).
 
-2. **Fiches d'information en tête**, horodatées `00:00`, `00:01`… : fiche
-   événement, contacts, partenaires, liste des clubs, points à confirmer.
-   L'indicateur d'avance/retard les ignore automatiquement.
+2. **L'ordre des lignes est l'ordre du conducteur.** MC Note suit la feuille,
+   pas l'ordre alphabétique des horaires. Range les lignes dans l'ordre où
+   elles se dérouleront.
 
-3. **`timing` + `title` identifient une séquence.** Deux lignes partageant les
-   deux sont **fusionnées** en une seule séquence à plusieurs questions. Deux
-   passages d'un même club à des heures différentes sont donc bien deux
-   séquences ; deux lignes identiques par erreur n'en font qu'une.
+3. **Fiches d'information en tête**, horodatées `00:00`, `00:01`… : fiche
+   événement, contacts, partenaires, listes, points à confirmer. L'indicateur
+   d'avance/retard les ignore. Elles se placent **toujours avant** la première
+   séquence horodatée. Dans un fichier multi-jours, un seul bloc suffit.
 
-4. **Des retours à la ligne, jamais de séparateurs.** Une liste s'écrit une
+4. **`timing` + `title` identifient une séquence.** Deux lignes partageant les
+   deux sont **fusionnées** en une seule séquence à plusieurs questions — c'est
+   voulu quand une séquence a plusieurs sujets, jamais sinon. Deux activités à
+   la même heure font deux séquences, avec deux titres différents, dans l'ordre
+   des sources.
+
+5. **Des retours à la ligne, jamais de séparateurs.** Une liste s'écrit une
    puce par ligne :
    ```
    • CIC Nord Ouest
@@ -85,55 +108,86 @@ Chacune vient d'un problème réellement rencontré.
    Pas `CIC | Toyota | Ibis`, ni `• CIC • Toyota • Ibis` : à l'écran, tout
    s'affiche collé. Une ligne vide sépare deux blocs.
 
-5. **Une scène s'écrit toujours exactement de la même façon.** « Matinée » et
+6. **Une scène s'écrit toujours exactement de la même façon.** « Matinée » et
    « Matinee » deviennent deux scènes de couleurs différentes. Choisis les noms
-   une fois, puis recopie-les à l'identique. Huit scènes au maximum : au-delà,
-   les couleurs se répètent. Une scène = des séquences **consécutives**.
-
-6. **Ne jamais inventer.** Ce qui n'est pas dans les sources n'entre pas dans le
-   fichier. Ce qui est incertain est signalé comme tel, dans la séquence
-   concernée et dans la fiche « Points à confirmer » :
-   ```
-   À VÉRIFIER juste avant : gala ou compétition ?
-   Ne pas annoncer « 14e de France » — non confirmé.
-   ```
-   Une erreur annoncée au micro devant 500 personnes ne se rattrape pas.
-
-7. **Signale toujours ta source** dans la fiche événement (« Source : e-mail de
-   X du 12/09 + planning v2 »). L'animateur doit savoir d'où vient ce qu'il lit.
+   une fois, puis recopie-les à l'identique. Une scène regroupe des séquences
+   **consécutives**. Huit au maximum : au-delà, les couleurs se répètent.
 
 ---
 
-## 3. Méthode
+## 3. Ne jamais inventer — et comment écrire ce qui manque
 
-1. **Inventorie les sources.** Liste ce que l'utilisateur t'a fourni et ce que
-   chacune apporte : horaires, noms, rôles, chiffres, consignes techniques.
-2. **Repère les contradictions et les trous.** Un club au planning mais absent
-   de la liste, un créneau vide, deux horaires différents pour la même chose :
-   tout va dans « Points à confirmer ».
-3. **Découpe en scènes** — 3 à 6 en général : « Infos générales », puis les
-   grands temps de l'événement (Accueil, Cérémonie, Matinée, Après-midi,
-   Clôture…), et au besoin « Contacts et responsables ».
-4. **Écris les fiches d'information** (`00:00`…), puis **les séquences**
-   dans l'ordre chronologique.
+Une erreur annoncée au micro devant 500 personnes ne se rattrape pas.
+
+- **Ce qui n'est pas dans les sources n'entre pas dans le fichier** : ni fait,
+  ni chiffre, ni nom, ni orthographe, ni année, ni date d'e-mail — ni même le
+  genre d'une personne désignée par sa fonction (« le maire », « la direction »).
+- **Les tournures de liaison sont permises** dans une annonce : « Bienvenue à
+  toutes et à tous », « Place maintenant à… », « J'ai le plaisir d'appeler… ».
+  **Les faits, jamais** : un titre, un palmarès, un chiffre, une qualité
+  n'apparaissent que s'ils sont dans les sources.
+- **Aucun texte à trou dans une annonce.** Jamais `[nom]`, `XXX`, `…` là où
+  l'animateur doit lire : sur scène, il le lirait tel quel. Écris l'annonce
+  sans l'élément manquant, et place au-dessus une ligne À VÉRIFIER :
+  ```
+  À VÉRIFIER juste avant : le maire vient-il ? Sinon, nom et fonction de l'adjoint.
+
+  Annonce : « Pour ouvrir officiellement ce salon, j'ai le plaisir de laisser
+  la parole au maire. »
+  ```
+- **Les formules d'incertitude comptent comme non confirmées** : « je crois »,
+  « normalement », « à peu près », « sauf changement », « on attend
+  confirmation ». Le fait va dans « Points à confirmer », et dans la séquence
+  concernée avec la consigne de ne pas l'annoncer :
+  ```
+  Ne pas annoncer « meilleur sommelier de France 2019 » — non confirmé.
+  ```
+- **Un trou dans le planning ne devient pas une séquence.** Créneau vide, heure
+  de fin inconnue, pause non précisée : tout va dans « Points à confirmer ».
+- **Une suggestion de ta part** — par exemple le moment où remercier les
+  partenaires — n'apparaît que dans « Points à confirmer », précédée de
+  « Suggestion : ».
+- **Une activité qui ne concerne pas l'animateur** (démonstration sur un autre
+  stand) ne reçoit une séquence que s'il doit l'annoncer ; dans le doute, elle
+  va dans « Points à confirmer ».
+- **Signale toujours ta source** dans la fiche événement (« Source : e-mail de
+  Sophie Martin + message de l'animateur »), sans inventer de date.
+
+---
+
+## 4. Méthode
+
+1. **Inventorie les sources** et ce que chacune apporte : horaires, noms,
+   rôles, chiffres, consignes techniques.
+2. **Repère les contradictions et les trous** : un club au planning mais absent
+   de la liste, deux activités à la même heure, un horaire flou. Tout va dans
+   « Points à confirmer ».
+3. **Découpe en jours**, puis chaque jour en scènes — 3 à 6 en général :
+   « Infos générales », puis les grands temps (Accueil, Cérémonie, Matinée,
+   Après-midi, Clôture…).
+4. **Écris les fiches d'information** (`00:00`…), puis **les séquences** dans
+   l'ordre où elles se dérouleront.
 5. **Rédige chaque `question_content` pour quelqu'un qui est sur scène** :
-   - ce qu'il doit **dire** (texte d'annonce, entre guillemets, prêt à lire) ;
-   - ce qu'il doit **savoir** (faits clés en puces, les plus utiles d'abord) ;
-   - ce qu'il doit **faire** (micro, relais, qui appeler, photo) ;
-   - ce qu'il doit **vérifier** avant d'y aller.
-   Phrases courtes. Noms propres exacts. Chiffres sourcés.
+   - ce qu'il doit **vérifier** avant d'y aller — en premier, pour ne pas le rater ;
+   - ce qu'il doit **dire** : l'annonce entre guillemets, prête à lire ;
+   - ce qu'il doit **savoir** : faits clés en puces, les plus utiles d'abord ;
+   - ce qu'il doit **faire** : micro, relais, qui appeler, photo.
+
+   Phrases courtes. Noms propres exacts.
 6. **Génère le CSV** avec le module `csv` de Python, en UTF-8.
 7. **Valide-le** :
    ```
    python3 scripts/valider_csv.py fichier.csv
    ```
    Corrige toute **ERREUR**. Relis chaque **ATTENTION** : elle est parfois
-   voulue (une longue liste de clubs, par exemple), parfois non.
-8. **Livre** le fichier et le récapitulatif (section 5).
+   voulue (une longue liste de clubs), parfois non. Si le script ne peut pas
+   s'exécuter dans ton environnement, applique à la main la liste de la
+   section 8 — elle reprend les mêmes contrôles.
+8. **Livre** le fichier et le récapitulatif (section 6).
 
 ---
 
-## 4. Mettre à jour un conducteur existant
+## 5. Mettre à jour un conducteur existant
 
 C'est le piège principal. MC Note lit **une URL de feuille fixe** et se
 resynchronise toute seule toutes les 30 secondes.
@@ -143,9 +197,9 @@ resynchronise toute seule toutes les 30 secondes.
   « v4 » a une autre URL : l'application continue de lire l'ancienne et rien
   ne semble se mettre à jour.
 - Ne numérote donc pas les versions dans le nom du fichier. Un nom stable :
-  `MCNOTE_<Evenement>_<Jour>.csv`.
-- S'il faut malgré tout un nouveau fichier, rappelle-lui qu'il doit recoller
-  l'événement à la nouvelle feuille avec le bouton 🔗 de la carte, dans MC Note.
+  `MCNOTE_<Evenement>_<Jour>.csv`, par exemple `MCNOTE_SalonVins_Samedi.csv`.
+- S'il faut malgré tout un nouveau fichier, rappelle-lui de recoller
+  l'événement à la nouvelle feuille avec le bouton 🔗 de sa carte dans MC Note.
 - Garde les mêmes `timing` et `title` pour une séquence qui ne fait que
   s'enrichir : l'application la reconnaît et met son contenu à jour, **en
   conservant les validations et les notes prises sur scène**. Changer l'un des
@@ -153,39 +207,43 @@ resynchronise toute seule toutes les 30 secondes.
 
 ---
 
-## 5. Livraison
+## 6. Livraison
 
-Donne le fichier, puis un récapitulatif bref :
+Donne le ou les fichiers, puis un récapitulatif bref :
 
 ```
-Conducteur Vital Sport — samedi : 18 séquences, 4 scènes
-  Infos générales (5) · Matinée (4) · Après-midi (8) · Contacts (1)
+Conducteur Salon des Vins — samedi : 8 séquences, 3 scènes
+  Infos générales (4) · Matinée (2) · Après-midi (2)
 
 À confirmer avant l'événement (3) :
-  1. Uni-vert Sport : discipline inconnue
-  2. Créneaux 12h00–13h00 vides : pause ou animation ?
-  3. Heure de call-time du MC
+  1. Le maire vient-il ? Sinon, nom de l'adjoint
+  2. Titre du sommelier : ne pas l'annoncer d'ici là
+  3. Suggestion : remercier les partenaires à la remise des prix
 
 Validation : conforme.
 ```
 
-Puis les consignes d'import, adaptées à son cas :
+Pour plusieurs fichiers, un bloc de ce type par fichier.
+
+Puis les consignes d'import, adaptées à son cas — CSV par défaut s'il ne
+précise pas qu'il travaille dans Google Sheets :
 
 - **Fichier CSV** : MC Note → Événements → onglet **CSV** → nom de
-  l'événement → choisir le fichier → Importer.
+  l'événement → choisir le fichier → Importer. Un import par jour.
 - **Google Sheets** : coller le contenu dans la feuille, puis la partager en
   **« Tout utilisateur disposant du lien » → Lecteur**. Sans ce partage,
   l'application affiche « Feuille illisible ». Dans MC Note : onglet
   **Google Sheets** → coller l'URL.
 
-**Données personnelles.** Si le fichier contient des numéros de téléphone ou
-des adresses e-mail, préviens l'utilisateur : une feuille partagée par lien est
-lisible par quiconque obtient l'URL. Propose de déplacer ces coordonnées dans
-un bloc-notes ou une note rapide plutôt que dans la feuille partagée.
+**Données personnelles.** Garde par défaut les coordonnées fournies dans la
+fiche « Contacts » : l'animateur en a besoin sur place. Mais **signale-le
+toujours** : si le contenu passe par une feuille partagée par lien, quiconque
+obtient l'URL lit ces numéros et ces adresses. Propose de les déplacer dans un
+bloc-notes, qui n'est jamais partagé par lien.
 
 ---
 
-## 6. Ce que l'application fait, pour bien conseiller
+## 7. Ce que l'application fait, pour bien conseiller
 
 - Chaque séquence s'affiche seule à l'écran : horaire, titre, intervenants,
   puis le contenu. Un contenu long **défile**, avec un repère « ▼ suite ».
@@ -199,11 +257,21 @@ un bloc-notes ou une note rapide plutôt que dans la feuille partagée.
 
 ---
 
-## 7. À ne pas faire
+## 8. Contrôle avant livraison
 
-- Inventer un fait, un chiffre, un nom, une orthographe.
-- Séparer des éléments par `|`, `;` ou des puces enchaînées sur une ligne.
-- Créer un nouveau fichier à chaque mise à jour.
-- Écrire une même scène de deux façons.
-- Mettre deux lignes au même `timing` et au même `title` sans le vouloir.
-- Livrer sans avoir lancé le script de validation.
+Le script vérifie tout ce qui suit sauf les deux derniers points. Sans script,
+vérifie-les tous à la main.
+
+- [ ] En-tête exact, colonne `scene` en dernier
+- [ ] Chaque ligne a le même nombre de champs que l'en-tête (guillemets)
+- [ ] Chaque ligne a un `timing` ou un `title`
+- [ ] Fiches `00:0x` en tête, avant toute séquence horodatée
+- [ ] Aucune paire `timing` + `title` en double sans le vouloir
+- [ ] Aucun `|`, aucune puce enchaînée sur une ligne
+- [ ] Chaque nom de scène écrit à l'identique, scènes consécutives
+- [ ] Aucun `[…]` ni `XXX` dans une annonce
+- [ ] **Un seul jour par fichier**, ou le jour dans chaque titre et chaque scène
+- [ ] **Aucun fait absent des sources** — relis chaque chiffre et chaque titre
+
+« Conforme » veut dire importable, pas juste : les deux derniers points ne
+relèvent que de ta relecture.

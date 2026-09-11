@@ -22,6 +22,15 @@ TAILLE_PALETTE = 8          # couleurs distinctes pour les scenes dans l'app
 CONTENU_LONG = 1500         # au-dela, la zone defile : acceptable mais a savoir
 
 
+TROU = re.compile(r'\[[^\]]*\]|\bX{3,}\b|\?\?\?')
+FICHE_INFO = re.compile(r'^00:0\d')
+
+
+def minutes(timing):
+    trouve = re.search(r'(\d{1,2}):(\d{2})', timing or '')
+    return int(trouve.group(1)) * 60 + int(trouve.group(2)) if trouve else None
+
+
 def normaliser(texte):
     """Minuscules, sans accents ni espaces : sert a reperer les variantes."""
     sans_accents = unicodedata.normalize('NFD', texte or '')
@@ -94,6 +103,8 @@ def main(chemin):
     # ---- evenement ----
     sequences = {}
     ordre = []
+    premiere_seance = None      # numero de la premiere sequence horodatee
+    horaire_precedent = None    # (minutes, timing, numero)
     for numero, r in enumerate(enregistrements, start=2):
         timing, titre = r.get('timing', ''), r.get('title', '')
         if not timing and not titre:
@@ -104,6 +115,22 @@ def main(chemin):
         if timing and not re.search(r'\d{1,2}:\d{2}', timing):
             avertissements.append(f"Ligne {numero} : timing « {timing} » sans heure HH:MM. "
                                   "L'indicateur d'avance/retard ne fonctionnera pas.")
+        # Fiches d'information 00:0x : toujours avant la premiere sequence horodatee
+        if FICHE_INFO.match(timing):
+            if premiere_seance is not None:
+                avertissements.append(f"Ligne {numero} : fiche d'information « {timing} » placee apres "
+                                      f"la sequence de la ligne {premiere_seance}. Les fiches 00:0x vont en tete.")
+        elif minutes(timing) is not None:
+            if premiere_seance is None:
+                premiere_seance = numero
+            m = minutes(timing)
+            if horaire_precedent and m < horaire_precedent[0]:
+                avertissements.append(f"Ligne {numero} : l'horaire recule ({horaire_precedent[1]} ligne "
+                                      f"{horaire_precedent[2]} -> {timing}). Plusieurs jours dans un meme "
+                                      "fichier ? Faire un fichier par jour, ou mettre le jour dans chaque "
+                                      "titre et chaque scene.")
+            horaire_precedent = (m, timing, numero)
+
         cle = f"{timing}|{titre}"
         if cle not in sequences:
             sequences[cle] = {'lignes': [], 'scene': r.get('scene', ''), 'questions': 0}
@@ -116,6 +143,12 @@ def main(chemin):
         if ' | ' in contenu and '\n' not in contenu:
             avertissements.append(f"Ligne {numero} : elements separes par « | » sur une seule ligne. "
                                   "A l'ecran tout sera colle. Utiliser des retours a la ligne et des puces « • ».")
+        for colonne in ('question_content', 'question_text', 'title', 'people'):
+            trou = TROU.search(r.get(colonne, ''))
+            if trou:
+                avertissements.append(f"Ligne {numero} ({colonne}) : « {trou.group(0)} » ressemble a un texte "
+                                      "a completer. Sur scene il serait lu tel quel. Ecrire l'annonce sans "
+                                      "l'element manquant et ajouter une ligne « A VERIFIER ».")
         if any(ligne.count('•') >= 2 for ligne in contenu.split('\n')):
             avertissements.append(f"Ligne {numero} : plusieurs puces « • » sur une meme ligne. "
                                   "Chaque puce doit commencer sa propre ligne, sinon la liste s'affiche collee.")
