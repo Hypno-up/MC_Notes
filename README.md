@@ -16,6 +16,8 @@ netlify/functions/
   gsheet-proxy.js                 Récupère une feuille Google en CSV (contourne le CORS)
   sheet-append.js                 Ajoute une ligne dans la feuille, via Apps Script
 apps-script/Code.gs               Script à déployer côté Google (voir son en-tête)
+skills/mcnote-conducteur/         Compétence Claude : infos brutes → CSV prêt à importer
+skills/mcnote-conducteur.zip      La même, prête à téléverser dans Claude
 capacitor.config.json             Configuration de l'app Android
 android/                          Projet Android généré par Capacitor
 resources/icon.png, splash.png    Sources des icônes (1024 et 2732 px)

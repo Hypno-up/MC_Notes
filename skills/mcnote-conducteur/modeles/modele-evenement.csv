@@ -1,0 +1,10 @@
+timing,title,people,question_text,question_content,scene
+08:00,Accueil et café,Tous les participants,Bienvenue,Accueil des participants avec café et viennoiseries. Remise des badges.,Accueil
+08:30,Introduction,Animateur,Présentation de la journée,Bonjour à tous et bienvenue ! Nous allons passer une journée riche en découvertes. Voici le programme...,Accueil
+09:00,Session 1,Intervenant A,Premier sujet,Contenu détaillé de la première session. Points clés à aborder pendant cette intervention.,Matinée
+10:30,Pause café,Tous,Networking,Pause de 20 minutes pour le réseautage et les échanges informels.,Matinée
+10:50,Session 2,Intervenant B,Deuxième sujet,Contenu de la deuxième session avec les éléments importants à présenter.,Matinée
+12:30,Déjeuner,Tous les participants,Repas,Déjeuner au restaurant partenaire. Tables réservées au nom de l'événement.,Déjeuner
+14:00,Atelier pratique,Animateur + Participants,Mise en pratique,Exercices pratiques en petits groupes. Instructions et objectifs de l'atelier.,Après-midi
+15:30,Questions/Réponses,Panel,Échanges avec le public,Session de questions-réponses avec tous les intervenants. Questions préparées et questions du public.,Après-midi
+16:00,Clôture,Animateur,Remerciements et conclusion,Merci à tous pour votre participation ! Résumé des points clés et informations pour la suite.,Clôture
