@@ -549,6 +549,13 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
+        .popup-btn.suivant-btn {
+            background: var(--accent-primary);
+            color: #fff;
+        }
+
+        .popup-btn.suivant-btn:disabled { cursor: default; }
+
         .quick-note-section { position: relative; }
 
         .effacer-note {
@@ -2173,6 +2180,9 @@
         <div class="popup-footer">
             <button class="popup-btn close-btn" onclick="closePopup()">
                 <i class="fas fa-arrow-left"></i> Retour
+            </button>
+            <button class="popup-btn suivant-btn" id="popupSuivantBtn" onclick="sequenceSuivanteDansPopup()">
+                Suivant <i class="fas fa-arrow-right"></i>
             </button>
             <button class="popup-btn prompter-btn" onclick="startPrompterFromPopup()">
                 <i class="fas fa-scroll"></i> Prompteur
@@ -4355,15 +4365,48 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         }
 
         // ==================== POPUP ====================
-        window.openPopup = () => {
+        function remplirPopup() {
             const seq = currentEvent?.sequences?.[currentSequenceIndex];
-            if (!seq) return;
-            document.getElementById('popupTitle').textContent = seq.title || '--';
+            if (!seq) return false;
+
+            // L'horaire accompagne le titre : en lecture plein ecran, c'est le
+            // seul repere qui reste quand on enchaine les sequences.
+            const titre = document.getElementById('popupTitle');
+            titre.textContent = `${seq.timing || '--:--'} · ${seq.title || '--'}`;
+
             let content = '';
-            (seq.questions || []).forEach(q => { if (q.text) content += q.text + '\n\n'; if (q.content) content += q.content + '\n\n'; });
-            document.getElementById('popupContent').textContent = content.trim();
+            (seq.questions || []).forEach(q => {
+                if (q.text) content += q.text + '\n\n';
+                if (q.content) content += q.content + '\n\n';
+            });
+            const zone = document.getElementById('popupContent');
+            zone.textContent = content.trim();
+            zone.scrollTop = 0;   // on repart en haut de la nouvelle sequence
+
+            const derniere = currentSequenceIndex >= (currentEvent?.sequences?.length || 0) - 1;
+            const suivant = document.getElementById('popupSuivantBtn');
+            suivant.disabled = derniere;
+            suivant.style.opacity = derniere ? '0.4' : '1';
+            return true;
+        }
+
+        window.openPopup = () => {
+            if (!remplirPopup()) return;
             document.getElementById('popupOverlay').classList.add('active');
         };
+
+        // Enchainer les sequences sans repasser par l'ecran principal.
+        window.sequenceSuivanteDansPopup = () => {
+            if (currentSequenceIndex >= (currentEvent?.sequences?.length || 0) - 1) return;
+            currentSequenceIndex++;
+            // L'ecran derriere suit, sinon on le retrouverait sur la mauvaise
+            // sequence en fermant la popup.
+            renderProgressSidebar();
+            renderCurrentSequence();
+            memoriserPosition();
+            remplirPopup();
+        };
+
         window.closePopup = () => document.getElementById('popupOverlay').classList.remove('active');
 
         // ==================== PROMPTER ====================
@@ -5251,6 +5294,14 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             if (document.getElementById('prompterOverlay').classList.contains('active')) {
                 if (e.key === ' ') { e.preventDefault(); togglePrompterPlayPause(); }
                 if (e.key === 'Escape') closePrompter();
+                return;
+            }
+            // La popup est au-dessus : sans ce cas, les fleches deplacaient la
+            // sequence derriere sans rafraichir la lecture en cours, et les deux
+            // se desynchronisaient.
+            if (document.getElementById('popupOverlay').classList.contains('active')) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); sequenceSuivanteDansPopup(); }
+                if (e.key === 'Escape') closePopup();
                 return;
             }
             if (document.getElementById('sequencePage').style.display === 'flex') {

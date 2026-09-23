@@ -111,7 +111,13 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
   intervenants, la scène, les questions et la note rapide. Insensible aux accents
   et à la casse : « patisserie » trouve « Pâtisserie ». Chaque résultat montre un
   extrait avec le terme surligné et saute à la séquence
-- **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran
+- **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran. Un
+  bouton **Suivant**, à côté de Retour, enchaîne les séquences **sans quitter la
+  lecture** ; il se grise sur la dernière. L'écran derrière suit, sinon on le
+  retrouverait sur la mauvaise séquence en fermant. L'horaire accompagne le
+  titre : c'est le seul repère qui reste en plein écran. Les flèches ↓ et →
+  font la même chose — auparavant elles déplaçaient la séquence derrière sans
+  rafraîchir la lecture, et les deux se désynchronisaient
 - **Prompteur** (voir §6)
 - **Mode édition** (`toggleEditMode`) — modifier horaire, titre, intervenants, questions
 - **Ajout d'une séquence en direct** (bouton **＋**) — le timing est prérempli à
