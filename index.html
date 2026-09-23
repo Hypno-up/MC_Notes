@@ -2414,7 +2414,7 @@
             <div class="modal-body">
                 <div class="form-group">
                     <input type="text" id="rechercheInput" autocomplete="off"
-                           placeholder="Titre, intervenant, contenu, note...">
+                           placeholder="Mots-clés : titre, intervenant, contenu, note…">
                 </div>
                 <div id="rechercheResultats"></div>
             </div>
@@ -3747,18 +3747,45 @@
             return morceaux.filter(Boolean).join(' \u00b7 ');
         }
 
-        // Renvoie un extrait centre sur la premiere occurrence, avec le terme
-        // surligne. Le texte est insere via textContent, jamais en HTML.
-        function extraitAutour(texte, terme) {
-            const position = normaliser(texte).indexOf(terme);
-            if (position < 0) return null;
+        // Renvoie un extrait centre sur le premier mot-cle rencontre, decoupe en
+        // morceaux { texte, trouve } pour surligner chaque mot-cle qu'il contient.
+        // Le texte est insere via textContent, jamais en HTML.
+        function extraitAutour(texte, mots) {
+            const normalise = normaliser(texte);
+            const positions = mots.map(m => normalise.indexOf(m)).filter(p => p >= 0);
+            if (!positions.length) return null;
+            const position = Math.min(...positions);
             const debut = Math.max(0, position - 40);
-            const fin = Math.min(texte.length, position + terme.length + 60);
-            return {
-                avant: (debut > 0 ? '…' : '') + texte.slice(debut, position),
-                trouve: texte.slice(position, position + terme.length),
-                apres: texte.slice(position + terme.length, fin) + (fin < texte.length ? '…' : '')
-            };
+            const fin = Math.min(texte.length, position + 100);
+
+            // Intervalles a surligner dans la fenetre, fusionnes s'ils se chevauchent.
+            const zones = [];
+            mots.forEach(m => {
+                let p = normalise.indexOf(m, debut);
+                while (p >= 0 && p < fin) {
+                    zones.push([p, Math.min(fin, p + m.length)]);
+                    p = normalise.indexOf(m, p + m.length);
+                }
+            });
+            zones.sort((a, b) => a[0] - b[0]);
+            const fusion = [];
+            zones.forEach(z => {
+                const derniere = fusion[fusion.length - 1];
+                if (derniere && z[0] <= derniere[1]) derniere[1] = Math.max(derniere[1], z[1]);
+                else fusion.push([...z]);
+            });
+
+            const morceaux = [];
+            let curseur = debut;
+            fusion.forEach(([a, b]) => {
+                if (a > curseur) morceaux.push({ texte: texte.slice(curseur, a) });
+                morceaux.push({ texte: texte.slice(a, b), trouve: true });
+                curseur = b;
+            });
+            if (curseur < fin) morceaux.push({ texte: texte.slice(curseur, fin) });
+            if (debut > 0) morceaux.unshift({ texte: '…' });
+            if (fin < texte.length) morceaux.push({ texte: '…' });
+            return morceaux;
         }
 
         function lancerRecherche() {
@@ -3766,6 +3793,11 @@
             const terme = normaliser(saisie);
             const zone = document.getElementById('rechercheResultats');
             zone.textContent = '';
+
+            // Recherche par mots-cles : chaque mot doit apparaitre quelque part
+            // dans la sequence, dans n'importe quel ordre. « remise prix »
+            // trouve donc « Remise des prix ».
+            const mots = [...new Set(terme.split(/\s+/).filter(Boolean))];
 
             if (terme.length < 2) {
                 const aide = document.createElement('p');
@@ -3779,14 +3811,22 @@
             const trouvees = [];
             (currentEvent?.sequences || []).forEach((seq, i) => {
                 const texte = texteCherchable(seq);
-                if (normaliser(texte).includes(terme)) trouvees.push({ seq, i, texte });
+                const normalise = normaliser(texte);
+                if (!mots.every(m => normalise.includes(m))) return;
+                // Les sequences dont le titre porte les mots-cles passent devant ;
+                // a egalite, l'ordre du conducteur est conserve.
+                const titre = normaliser(seq.title);
+                const pertinence = mots.filter(m => titre.includes(m)).length;
+                trouvees.push({ seq, i, texte, pertinence });
             });
+            trouvees.sort((a, b) => b.pertinence - a.pertinence || a.i - b.i);
 
             const info = document.createElement('p');
             info.className = 'recherche-info';
             info.textContent = trouvees.length === 0
                 ? 'Aucune séquence ne contient ce terme.'
                 : `${trouvees.length} séquence${trouvees.length > 1 ? 's' : ''} sur ${currentEvent.sequences.length}`;
+            if (trouvees.length === 0 && mots.length > 1) info.textContent = 'Aucune séquence ne contient tous ces mots.';
             zone.appendChild(info);
 
             trouvees.forEach(({ seq, i, texte }) => {
@@ -3807,15 +3847,15 @@
 
                 const extrait = document.createElement('div');
                 extrait.className = 'extrait';
-                const morceau = extraitAutour(texte, terme);
-                if (morceau) {
-                    const surligne = document.createElement('mark');
-                    surligne.textContent = morceau.trouve;
-                    extrait.append(
-                        document.createTextNode(morceau.avant),
-                        surligne,
-                        document.createTextNode(morceau.apres));
-                }
+                (extraitAutour(texte, mots) || []).forEach(morceau => {
+                    if (morceau.trouve) {
+                        const surligne = document.createElement('mark');
+                        surligne.textContent = morceau.texte;
+                        extrait.appendChild(surligne);
+                    } else {
+                        extrait.appendChild(document.createTextNode(morceau.texte));
+                    }
+                });
 
                 ligne.append(entete, extrait);
                 ligne.addEventListener('click', () => {

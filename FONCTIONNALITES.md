@@ -109,8 +109,13 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
   d'information horodatée `00:0x`, où l'écart n'aurait aucun sens
 - **Recherche** (loupe, barre du haut) — porte sur l'horaire, le titre, les
   intervenants, la scène, les questions et la note rapide. Insensible aux accents
-  et à la casse : « patisserie » trouve « Pâtisserie ». Chaque résultat montre un
-  extrait avec le terme surligné et saute à la séquence
+  et à la casse : « patisserie » trouve « Pâtisserie ». Les résultats s'affichent
+  à chaque lettre tapée. Recherche **par mots-clés** : chaque mot doit figurer
+  dans la séquence, dans n'importe quel ordre — « remise prix » trouve « Remise
+  des prix ». Les séquences dont le titre porte les mots passent en tête. Chaque
+  résultat montre un extrait avec les mots surlignés et saute à la séquence
+- **Taille du texte** (bouton « Aa », conducteur et vue note) — cinq crans de
+  100 à 175 %, retenus par appareil ; une tablette part à 115 %
 - **Popup « Lire »** (`openPopup`) — affiche un texte long en plein écran. Un
   deux flèches **◀ ▶**, entre Retour et Prompteur, enchaînent les séquences
   **sans quitter la lecture** ; chacune se grise à son extrémité. Elles sont sans
@@ -146,7 +151,7 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 - Défilement automatique plein écran, superposition sombre
 - Lecture / pause (bouton + **barre d'espace**)
-- **Vitesse réglable** (`adjustPrompterSpeed`) — 5 crans
+- **Vitesse réglable** (`adjustPrompterSpeed`) — démarre à 1
 - **Taille de texte** (`adjustTextSize`) — 4 tailles : `sm / md / lg / xl`
 - Fermeture par bouton ou **Échap**
 - Désactivé automatiquement si le texte fait moins de 5 lignes
