@@ -494,6 +494,78 @@
             display: none;
         }
 
+        /* Au lancement, Firebase met un instant a dire qui est connecte. Sans cet
+           ecran, le formulaire de connexion apparaissait puis disparaissait :
+           l'application semblait se recharger a chaque retour. */
+        #ecranChargement {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            background: var(--bg-primary);
+        }
+
+        .logo-chargement {
+            width: 64px;
+            height: 64px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            color: #fff;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        }
+
+        /* Le bouton prend sa place dans le flux, sous l'en-tete. Flottant, il
+           recouvrait « Valider la sequence » — l'action la plus utilisee — et
+           passait derriere la carte. Ici il signale sans rien masquer, et
+           l'animateur decide du moment. */
+        .maj-dispo {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 7px 13px;
+            border: none;
+            border-radius: 999px;
+            background: var(--warning);
+            color: #1a1a2e;
+            font-family: inherit;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            animation: apparitionMaj 0.25s ease-out;
+        }
+
+        .maj-dispo:disabled { opacity: 0.7; }
+
+        @keyframes apparitionMaj {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .quick-note-section { position: relative; }
+
+        .effacer-note {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(239, 68, 68, 0.18);
+            color: var(--danger);
+            border: none;
+            border-radius: 8px;
+            width: 26px;
+            height: 26px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            line-height: 1;
+        }
+
         .ligne-horaire {
             display: flex;
             align-items: baseline;
@@ -1788,6 +1860,11 @@
 </head>
 <body>
     <!-- ==================== AUTH PAGE ==================== -->
+    <div id="ecranChargement">
+        <div class="logo-chargement"><i class="fas fa-microphone"></i></div>
+        <div class="loading-spinner"></div>
+    </div>
+
     <div id="authPage">
         <div class="auth-card">
             <div class="auth-header">
@@ -1971,6 +2048,10 @@
                 </div>
                 <div class="sequence-title" id="currentTitle">--</div>
                 <div class="sequence-people" id="currentPeople"></div>
+                <button class="maj-dispo" id="majDispo" onclick="appliquerMiseAJour()" style="display:none;">
+                    <i class="fas fa-cloud-arrow-down"></i>
+                    <span id="majDispoTexte">Mise à jour disponible</span>
+                </button>
             </div>
 
             <div class="sequence-content">
@@ -1981,6 +2062,10 @@
 
                 <div class="quick-note-section">
                     <textarea class="quick-note-input" id="quickNoteInput" placeholder="📝 Note rapide..."></textarea>
+                    <button class="effacer-note" id="effacerNoteBtn" onclick="effacerNote()"
+                            title="Effacer la note" aria-label="Effacer la note" style="display:none;">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
                 <div class="content-actions">
@@ -2423,6 +2508,7 @@
 
         // ==================== AUTH ====================
         onAuthStateChanged(auth, (user) => {
+            document.getElementById('ecranChargement').style.display = 'none';
             if (user) {
                 currentUser = user;
                 document.getElementById('authPage').style.display = 'none';
@@ -2504,7 +2590,14 @@
             }
         });
 
-        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            // Seule une deconnexion voulue efface la reprise. L'observateur
+            // d'authentification, lui, peut renvoyer « personne » pour un jeton
+            // expire hors ligne : effacer la position a ce moment-la ferait
+            // perdre sa place a l'animateur en plein evenement.
+            oublierPosition();
+            signOut(auth);
+        });
 
         // ==================== MODE TABS ====================
         document.querySelectorAll('.mode-tab').forEach(tab => {
@@ -2530,6 +2623,48 @@
         const generationsEvenements = { miens: 0, partages: 0 };
         const evenementsParSource = { miens: null, partages: null };
 
+        // ==================== REPRENDRE OU L'ON ETAIT ====================
+        // Android peut liberer l'application restee en arriere-plan : au retour,
+        // elle repart de zero et l'animateur se retrouve sur l'accueil, au milieu
+        // de son evenement. On retient donc la sequence affichee.
+        const CLE_POSITION = 'mcnote.position';
+        let positionARestaurer = null;
+        try {
+            positionARestaurer = JSON.parse(localStorage.getItem(CLE_POSITION) || 'null');
+        } catch (e) {
+            positionARestaurer = null;
+        }
+
+        function memoriserPosition() {
+            if (!currentEvent) return;
+            try {
+                localStorage.setItem(CLE_POSITION, JSON.stringify({
+                    evenement: currentEvent.id,
+                    index: currentSequenceIndex
+                }));
+            } catch (e) { /* mode prive, quota : sans gravite */ }
+        }
+
+        function oublierPosition() {
+            positionARestaurer = null;
+            try { localStorage.removeItem(CLE_POSITION); } catch (e) { /* sans gravite */ }
+        }
+
+        // Une seule tentative : passe le premier rendu, l'animateur est maitre
+        // de sa navigation.
+        function reprendreLaPosition() {
+            if (!positionARestaurer) return;
+            const ev = events.find(e => e.id === positionARestaurer.evenement);
+            if (!ev) return;                       // evenement supprime ou pas encore charge
+            if (!ev.sequences || !ev.sequences.length) return;
+            const index = Math.min(positionARestaurer.index || 0, ev.sequences.length - 1);
+            positionARestaurer = null;
+            openEvent(ev.id);
+            currentSequenceIndex = index;
+            renderProgressSidebar();
+            renderCurrentSequence();
+        }
+
         // Les noms viennent de la feuille ou de la saisie : ils sont interpoles
         // dans du HTML, donc echappes.
         function echapper(texte) {
@@ -2545,21 +2680,25 @@
             }
             events = [...parId.values()];
             renderEventsGrid();
+            reprendreLaPosition();
         }
 
         function ecouterEvenements(requete, cle) {
             onSnapshot(requete, async (snapshot) => {
                 const generation = ++generationsEvenements[cle];
-                const liste = [];
+                let liste = [];
                 try {
-                    for (const docSnap of snapshot.docs) {
+                    // Les sequences de chaque evenement etaient lues l'une apres
+                    // l'autre : autant d'allers-retours enchaines, et un accueil
+                    // long a s'afficher. Elles partent maintenant ensemble.
+                    liste = await Promise.all(snapshot.docs.map(async (docSnap) => {
                         const data = { id: docSnap.id, ...docSnap.data() };
                         data.invite = data.owner !== currentUser.uid;
                         const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
                         data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
                         trierSequences(data.sequences);
-                        liste.push(data);
-                    }
+                        return data;
+                    }));
                 } catch (e) {
                     // Une lecture a échoué : `liste` est incomplète. La publier
                     // ferait disparaître des éléments bien présents en base, ce qui
@@ -3046,6 +3185,9 @@
             document.getElementById('sequencePage').style.display = 'flex';
             renderProgressSidebar();
             renderCurrentSequence();
+            memoriserPosition();
+            // On regarde tout de suite si la feuille a bouge, sans rien appliquer.
+            veillerSurLaFeuille();
         };
 
         window.goToHome = () => {
@@ -3053,6 +3195,11 @@
             document.getElementById('notebookPage').style.display = 'none';
             document.getElementById('noteViewPage').style.display = 'none';
             document.getElementById('homePage').style.display = 'block';
+            // Quitter volontairement un evenement efface la reprise : au prochain
+            // lancement, on veut l'accueil, pas la sequence d'hier.
+            oublierPosition();
+            miseAJourEnAttente = null;
+            afficherBoutonMiseAJour();
         };
 
         // ==================== NOTEBOOKS ====================
@@ -3706,7 +3853,13 @@
 
         window.fermerScenes = () => document.getElementById('scenesModal').classList.remove('active');
 
-        window.goToSequence = (i) => { currentSequenceIndex = i; renderProgressSidebar(); renderCurrentSequence(); hideProgressTooltip(); };
+        window.goToSequence = (i) => {
+            currentSequenceIndex = i;
+            renderProgressSidebar();
+            renderCurrentSequence();
+            hideProgressTooltip();
+            memoriserPosition();
+        };
         window.showProgressTooltip = (e, i) => {
             const s = currentEvent.sequences[i];
             const t = document.getElementById('progressTooltip');
@@ -3743,6 +3896,7 @@
             document.getElementById('currentPeople').textContent = seq.people || '';
             majBandeauScene();
             majEcartHoraire();
+            afficherBoutonMiseAJour();
 
             let content = '';
             (seq.questions || []).forEach(q => {
@@ -3753,6 +3907,7 @@
             document.getElementById('contentText').scrollTop = 0;
             majIndicateurSuite();
             document.getElementById('quickNoteInput').value = seq.note || '';
+            majBoutonEffacerNote();
 
             const btn = document.getElementById('validateBtn');
             if (seq.validated) {
@@ -3825,8 +3980,14 @@
 
         document.getElementById('contentText').addEventListener('scroll', majIndicateurSuite);
 
-        window.goToPrevious = () => { if (currentSequenceIndex > 0) { currentSequenceIndex--; renderCurrentSequence(); } };
-        window.goToNext = () => { if (currentSequenceIndex < currentEvent.sequences.length - 1) { currentSequenceIndex++; renderCurrentSequence(); } };
+        window.goToPrevious = () => {
+            if (currentSequenceIndex > 0) { currentSequenceIndex--; renderCurrentSequence(); memoriserPosition(); }
+        };
+        window.goToNext = () => {
+            if (currentSequenceIndex < currentEvent.sequences.length - 1) {
+                currentSequenceIndex++; renderCurrentSequence(); memoriserPosition();
+            }
+        };
 
         window.toggleValidation = async () => {
             const seq = currentEvent.sequences[currentSequenceIndex];
@@ -3836,10 +3997,57 @@
             showToast(seq.validated ? 'Validée ✓' : 'Rouverte');
         };
 
-        document.getElementById('quickNoteInput').addEventListener('input', async (e) => {
+        // La note rapide s'ecrivait en base a chaque frappe, sans jamais mettre a
+        // jour l'objet en memoire : en revenant sur la sequence, l'ancienne valeur
+        // reapparaissait, et une note effacee revenait toute seule.
+        let minuterieNote = null;
+
+        function enregistrerNote(texte, immediat = false) {
             const seq = currentEvent?.sequences?.[currentSequenceIndex];
-            if (seq) await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id), { note: e.target.value });
+            if (!seq) return;
+            seq.note = texte;                      // l'affichage lit cet objet
+            majBoutonEffacerNote();
+
+            const ecrire = async () => {
+                try {
+                    await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id),
+                        { note: texte });
+                } catch (e) {
+                    console.error('note rapide :', e);
+                    showToast('Note non enregistrée : ' + (e.code || e.message));
+                }
+            };
+
+            clearTimeout(minuterieNote);
+            // Une ecriture par frappe est inutile et couteuse ; on attend la fin
+            // de la saisie. L'effacement, lui, part tout de suite.
+            if (immediat) ecrire(); else minuterieNote = setTimeout(ecrire, 700);
+        }
+
+        function majBoutonEffacerNote() {
+            const bouton = document.getElementById('effacerNoteBtn');
+            if (bouton) bouton.style.display =
+                document.getElementById('quickNoteInput').value ? 'block' : 'none';
+        }
+
+        document.getElementById('quickNoteInput').addEventListener('input', (e) => {
+            enregistrerNote(e.target.value);
         });
+
+        // On force l'ecriture en quittant la sequence ou l'application : sans
+        // cela, les 700 dernieres millisecondes de saisie seraient perdues.
+        document.getElementById('quickNoteInput').addEventListener('blur', (e) => {
+            enregistrerNote(e.target.value, true);
+        });
+
+        window.effacerNote = () => {
+            const champ = document.getElementById('quickNoteInput');
+            if (!champ.value) return;
+            if (!confirm('Effacer cette note ?')) return;
+            champ.value = '';
+            enregistrerNote('', true);
+            showToast('Note effacée');
+        };
 
         // ==================== AJOUT / EDITION DE SEQUENCE ====================
         // La modale sert aux deux usages. `modeAjoutSequence` distingue les cas.
@@ -4360,7 +4568,8 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             
             let created = 0;
             for (const seq of groups.values()) {
-                await addDoc(collection(db, "events", eventRef.id, "sequences"), seq);
+                await addDoc(collection(db, "events", eventRef.id, "sequences"),
+                    { ...seq, empreinteFeuille: empreinteDeLaFeuille(seq) });
                 created++;
             }
             
@@ -4524,23 +4733,8 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         function startAutoSync() {
             if (autoSyncInterval) return; // Already running
             
-            autoSyncInterval = setInterval(async () => {
-                // Check if we're viewing an event with Google Sheets source
-                if (currentEvent && currentEvent.sourceUrl && document.getElementById('sequencePage').style.display === 'flex') {
-                    console.log('Auto-sync: Checking event updates...');
-                    await silentRefreshEvent(currentEvent.id);
-                }
-                
-                // Check if we're viewing a notebook with Google Sheets source
-                if (currentNotebook && currentNotebook.sourceUrl && 
-                    (document.getElementById('notebookPage').style.display === 'flex' || 
-                     document.getElementById('noteViewPage').style.display === 'flex')) {
-                    console.log('Auto-sync: Checking notebook updates...');
-                    await silentRefreshNotebook(currentNotebook.id);
-                }
-            }, AUTO_SYNC_DELAY);
-            
-            console.log('Auto-sync started (every 30s)');
+            autoSyncInterval = setInterval(veillerSurLaFeuille, AUTO_SYNC_DELAY);
+            console.log('Veille sur la feuille : toutes les 30 s');
         }
 
         function stopAutoSync() {
@@ -4627,6 +4821,22 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         // des modifications, ou null si rien n'a change. `remonterErreur` sert a
         // l'appel manuel, qui doit afficher la cause d'un echec ; la sync
         // automatique, elle, echoue en silence.
+        // Ce que la feuille disait la derniere fois qu'on l'a lue. On compare la
+        // feuille a cette empreinte, jamais au texte affiche : sinon, la moindre
+        // retouche faite depuis le telephone ressemble a un ecart et se fait
+        // « corriger » en remettant la version de la feuille.
+        // Les documents anterieurs a cleSource sont rattaches par leur horaire et
+        // leur titre, puis rattrapes lors du rapprochement.
+        const cleDe = (seq) => seq.cleSource || `${seq.timing || ''}|${seq.title || ''}`;
+
+        function empreinteDeLaFeuille(donnees) {
+            return JSON.stringify([
+                donnees.people || '',
+                donnees.questions || [],
+                donnees.scene === undefined ? null : (donnees.scene || '')
+            ]);
+        }
+
         async function synchroniserEvenement(id, remonterErreur = false) {
             const eventData = events.find(e => e.id === id);
             if (!eventData || !eventData.sourceUrl) return null;
@@ -4657,10 +4867,6 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 // Deux documents peuvent porter la meme cle a la suite d'une
                 // duplication passee. L'ancienne version les ecrasait dans la Map
                 // et ne les supprimait jamais : les doublons etaient indelebiles.
-                // Les documents anterieurs a cleSource sont rattaches par leur
-                // horaire et leur titre, puis rattrapes plus bas.
-                const cleDe = (seq) => seq.cleSource || `${seq.timing || ''}|${seq.title || ''}`;
-
                 const byKey = new Map();
                 const doublons = [];
                 for (const seq of issuesDeLaFeuille) {
@@ -4678,19 +4884,29 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 for (const [key, incoming] of groups) {
                     const current = byKey.get(key);
                     if (!current) {
-                        const ref = await addDoc(collection(db, "events", id, "sequences"),
-                            { ...incoming, validated: false });
-                        existing.push({ id: ref.id, ...incoming, validated: false });
+                        const nouvelle = { ...incoming, validated: false,
+                                           empreinteFeuille: empreinteDeLaFeuille(incoming) };
+                        const ref = await addDoc(collection(db, "events", id, "sequences"), nouvelle);
+                        existing.push({ id: ref.id, ...nouvelle });
                         added++;
                     } else {
                         const majuscules = {};
-                        if ((current.people || '') !== incoming.people) majuscules.people = incoming.people;
-                        if (JSON.stringify(current.questions || []) !== JSON.stringify(incoming.questions)) {
+                        const empreinte = empreinteDeLaFeuille(incoming);
+
+                        if (current.empreinteFeuille === undefined) {
+                            // Document anterieur a ce champ : on pose l'empreinte
+                            // sans rien ecraser. Une retouche deja faite survit.
+                            majuscules.empreinteFeuille = empreinte;
+                        } else if (current.empreinteFeuille !== empreinte) {
+                            // La feuille a reellement change depuis la derniere
+                            // lecture : sa version fait foi.
+                            majuscules.people = incoming.people;
                             majuscules.questions = incoming.questions;
+                            if (incoming.scene !== undefined) majuscules.scene = incoming.scene;
+                            majuscules.empreinteFeuille = empreinte;
+                            updated++;
                         }
-                        if (incoming.scene !== undefined && (current.scene || '') !== incoming.scene) {
-                            majuscules.scene = incoming.scene;
-                        }
+
                         // Le rang appartient a la feuille : c'est elle qui fixe
                         // le deroule. Un reordonnancement s'y propage donc.
                         if (current.ordre !== incoming.ordre) majuscules.ordre = incoming.ordre;
@@ -4699,12 +4915,10 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         if (!current.cleSource) majuscules.cleSource = key;
 
                         if (Object.keys(majuscules).length) {
-                            // timing et title ne sont jamais ecrases : s'ils ont ete
-                            // modifies depuis le telephone, c'est un choix de
-                            // l'utilisateur. validated et note non plus.
+                            // timing, title, validated et note ne sont jamais
+                            // ecrases : ils appartiennent a l'utilisateur.
                             await updateDoc(doc(db, "events", id, "sequences", current.id), majuscules);
                             Object.assign(current, majuscules);
-                            if (majuscules.people !== undefined || majuscules.questions !== undefined) updated++;
                         }
                     }
                 }
@@ -4739,11 +4953,96 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             }
         }
 
-        // Sync automatique : ne parle que s'il y a du nouveau.
-        async function silentRefreshEvent(id) {
-            const bilan = await synchroniserEvenement(id);
-            if (bilan && (bilan.added || bilan.updated || bilan.removed)) {
-                showToast(`🔄 Conducteur mis à jour (${bilan.added} ajout(s), ${bilan.updated} modif., ${bilan.removed} suppr.)`);
+        // Regarde si la feuille a bouge, SANS rien ecrire. La mise a jour n'est
+        // plus appliquee d'office : elle attend que l'utilisateur la demande. En
+        // plein direct, voir son conducteur se reecrire tout seul est intenable.
+        async function detecterMiseAJour(id) {
+            const eventData = events.find(e => e.id === id);
+            if (!eventData || !eventData.sourceUrl || !navigator.onLine) return null;
+
+            const groups = parseSheetSequences(await fetchGoogleSheetCSV(eventData.sourceUrl));
+            if (groups.size === 0) return null;
+
+            const issuesDeLaFeuille = (eventData.sequences || []).filter(s => s.origine !== 'local');
+            const byKey = new Map();
+            for (const seq of issuesDeLaFeuille) {
+                if (!byKey.has(cleDe(seq))) byKey.set(cleDe(seq), seq);
+            }
+
+            let ajouts = 0, modifs = 0, suppressions = 0;
+            for (const [cle, incoming] of groups) {
+                const current = byKey.get(cle);
+                if (!current) { ajouts++; continue; }
+                // Une empreinte absente n'est pas un changement : le document est
+                // simplement anterieur au champ. Le rapprochement la posera.
+                if (current.empreinteFeuille !== undefined
+                    && current.empreinteFeuille !== empreinteDeLaFeuille(incoming)) modifs++;
+            }
+            for (const current of issuesDeLaFeuille) {
+                if (!groups.has(cleDe(current))) suppressions++;
+            }
+
+            return (ajouts || modifs || suppressions) ? { ajouts, modifs, suppressions } : null;
+        }
+
+        let miseAJourEnAttente = null;   // { id, ajouts, modifs, suppressions }
+
+        function afficherBoutonMiseAJour() {
+            const bouton = document.getElementById('majDispo');
+            if (!bouton) return;
+            const surLEvenement = miseAJourEnAttente
+                && currentEvent && currentEvent.id === miseAJourEnAttente.id;
+            if (!surLEvenement) { bouton.style.display = 'none'; return; }
+
+            const { ajouts, modifs, suppressions } = miseAJourEnAttente;
+            const details = [
+                ajouts && `${ajouts} ajout${ajouts > 1 ? 's' : ''}`,
+                modifs && `${modifs} modif.`,
+                suppressions && `${suppressions} suppr.`
+            ].filter(Boolean).join(' · ');
+            document.getElementById('majDispoTexte').textContent = `Mise à jour — ${details}`;
+            bouton.style.display = 'inline-flex';
+        }
+
+        window.appliquerMiseAJour = async () => {
+            if (!miseAJourEnAttente) return;
+            const id = miseAJourEnAttente.id;
+            const bouton = document.getElementById('majDispo');
+            bouton.disabled = true;
+            document.getElementById('majDispoTexte').textContent = 'Mise à jour...';
+            const bilan = await synchroniserEvenement(id, true);
+            bouton.disabled = false;
+            miseAJourEnAttente = null;
+            afficherBoutonMiseAJour();
+            if (bilan) {
+                showToast(`À jour — ${bilan.added} ajout(s), ${bilan.updated} modif., ${bilan.removed} suppr.`);
+            }
+        };
+
+        // Veille de fond : lit la feuille, ne touche a rien, et se contente de
+        // faire apparaitre le bouton. Silencieuse en cas d'echec — une coupure
+        // reseau ne doit pas interrompre l'animateur.
+        async function veillerSurLaFeuille() {
+            if (document.hidden || !navigator.onLine) return;
+
+            const surUnEvenement = currentEvent && currentEvent.sourceUrl
+                && document.getElementById('sequencePage').style.display === 'flex';
+            if (surUnEvenement) {
+                try {
+                    const ecart = await detecterMiseAJour(currentEvent.id);
+                    miseAJourEnAttente = ecart ? { id: currentEvent.id, ...ecart } : null;
+                    afficherBoutonMiseAJour();
+                } catch (e) {
+                    console.warn('veille :', e);
+                }
+            }
+
+            const surUnBlocNotes = currentNotebook && currentNotebook.sourceUrl
+                && (document.getElementById('notebookPage').style.display === 'flex'
+                    || document.getElementById('noteViewPage').style.display === 'flex');
+            if (surUnBlocNotes) {
+                try { await silentRefreshNotebook(currentNotebook.id); }
+                catch (e) { console.warn('veille bloc-notes :', e); }
             }
         }
 
@@ -4831,7 +5130,12 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
 
         setInterval(syncWakeLock, 2000);
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') { wakeLock = null; syncWakeLock(); }
+            if (document.visibilityState !== 'visible') return;
+            wakeLock = null;
+            syncWakeLock();
+            // Au retour a l'ecran, on regarde la feuille une fois. Rien n'est
+            // applique : seul le bouton peut apparaitre.
+            veillerSurLaFeuille();
         });
 
         // ==================== INDICATEUR RÉSEAU ====================

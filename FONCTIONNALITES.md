@@ -148,7 +148,29 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 
 ## 7. Synchronisation
 
-- **Auto-sync toutes les 30 s** — uniquement quand un événement ou un bloc-notes issu de Google Sheets est **affiché à l'écran**
+- **Veille de fond, sans rien appliquer.** Toutes les 30 s — et au retour à
+  l'écran — l'application lit la feuille et **ne touche à rien**. Si elle a
+  bougé, un bouton **« Mise à jour — 2 ajouts · 1 modif. »** apparaît sous les
+  intervenants. Rien ne change tant qu'on ne l'a pas touché : en plein direct,
+  voir son conducteur se réécrire tout seul est intenable. Le bouton est dans
+  le flux, jamais flottant — il recouvrait « Valider la séquence », l'action la
+  plus utilisée
+- **Les retouches faites sur le téléphone survivent.** La feuille est comparée
+  à son **empreinte de la dernière lecture**, jamais au texte affiché. Comparer
+  au texte affiché faisait passer la moindre retouche pour un écart, aussitôt
+  « corrigé » en remettant la version de la feuille : seules les notes rapides
+  et les validations en réchappaient. Si la feuille change réellement, sa
+  version fait foi — c'est le sens du bouton
+- **Reprise à l'endroit où l'on était.** Android peut libérer l'application
+  restée en arrière-plan ; au retour, elle repartait de l'accueil, au milieu de
+  l'événement. La séquence affichée est mémorisée et retrouvée. Quitter
+  volontairement l'événement efface cette reprise, la déconnexion aussi
+- **Écran d'attente au lancement** : le formulaire de connexion apparaissait puis
+  disparaissait le temps que Firebase réponde, donnant l'impression d'un
+  rechargement à chaque retour
+- **Chargement des séquences en parallèle** : elles étaient lues événement par
+  événement, en autant d'allers-retours enchaînés
+- **Ancienne auto-sync toutes les 30 s** — uniquement quand un événement ou un bloc-notes issu de Google Sheets est **affiché à l'écran**
 - **Rapprochement non destructif** : mise à jour ligne à ligne, à partir des
   séquences **relues depuis Firestore** et non de la liste affichée. Se fier à
   la liste en mémoire dupliquait la feuille entière quand elle était encore
