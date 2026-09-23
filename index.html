@@ -3248,30 +3248,49 @@
         // ==================== NOTEBOOKS ====================
         let generationNotebooks = 0;
 
+        async function relireNotesManquantes(tentative = 1) {
+            const incomplets = notebooks.filter(nb => !nb.notes || !nb.notes.length);
+            if (!incomplets.length) return;
+
+            let reste = false;
+            await Promise.all(incomplets.map(async (nb) => {
+                try {
+                    const notesSnap = await getDocs(collection(db, "notebooks", nb.id, "notes"));
+                    nb.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
+                } catch (e) {
+                    reste = true;
+                }
+            }));
+
+            renderNotebooksGrid();
+            if (reste && tentative < 3) setTimeout(() => relireNotesManquantes(tentative + 1), 2500);
+        }
+
         async function loadNotebooks() {
             const q = query(collection(db, "notebooks"), where("owner", "==", currentUser.uid));
             onSnapshot(q, async (snapshot) => {
                 const generation = ++generationNotebooks;
-                const liste = [];
-                try {
-                    for (const docSnap of snapshot.docs) {
-                        const data = { id: docSnap.id, ...docSnap.data() };
+                // Meme traitement que les evenements : chaque bloc-notes est lu
+                // isolement, et un refus temporaire — le temps que le serveur
+                // enregistre une creation — n'efface plus toute la liste.
+                let aRetenter = false;
+                const liste = await Promise.all(snapshot.docs.map(async (docSnap) => {
+                    const data = { id: docSnap.id, ...docSnap.data() };
+                    try {
                         const notesSnap = await getDocs(collection(db, "notebooks", docSnap.id, "notes"));
                         data.notes = notesSnap.docs.map(n => ({ id: n.id, ...n.data() }));
-                        liste.push(data);
+                    } catch (e) {
+                        console.warn('notes de', docSnap.id, ':', e.code || e.message);
+                        const connu = notebooks.find(nb => nb.id === docSnap.id);
+                        data.notes = connu?.notes || [];
+                        aRetenter = true;
                     }
-                } catch (e) {
-                    // Une lecture a échoué : `liste` est incomplète. La publier
-                    // ferait disparaître des éléments bien présents en base, ce qui
-                    // ressemble à s'y méprendre à une perte de données. On garde
-                    // donc l'affichage précédent et on le signale.
-                    console.error('loadNotebooks:', e);
-                    showToast('Lecture incomplète, affichage conservé : ' + (e.code || e.message));
-                    return;
-                }
+                    return data;
+                }));
                 if (generation !== generationNotebooks) return; // un instantané plus récent a pris la main
                 notebooks = liste;
                 renderNotebooksGrid();
+                if (aRetenter) setTimeout(relireNotesManquantes, 1500);
             }, (e) => {
                 console.error('loadNotebooks (listener):', e);
                 showToast('Erreur de lecture : ' + (e.code || e.message));
