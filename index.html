@@ -2512,6 +2512,10 @@
             || location.hostname === '127.0.0.1';
         const API_BASE = IS_NATIVE ? 'https://mcnote.netlify.app' : '';
 
+        // Ponts natifs de l'application iOS (MCNoteViewController.swift).
+        // Absents sur le web et sous Android : la fonction rend alors undefined.
+        const pontIOS = (nom) => window.webkit?.messageHandlers?.[nom];
+
         // ==================== STATE ====================
         let currentUser = null;
         let events = [];
@@ -3011,7 +3015,8 @@
         // ==================== EXPORT DU CONDUCTEUR ====================
         // Le conducteur est reconstruit en document imprimable, puis confie au
         // systeme. Sur le web c'est window.print() ; dans l'application le
-        // WebView Android l'ignore, d'ou le pont expose par MainActivity.
+        // WebView Android l'ignore, d'ou le pont expose par MainActivity. Le
+        // WKWebView d'iOS l'ignore aussi : pont MCNoteViewController.
         function construireVueImpression(ev) {
             const zone = document.getElementById('vueImpression');
             zone.textContent = '';
@@ -3106,6 +3111,8 @@
             const pontAndroid = window.ImpressionAndroid;
             if (pontAndroid && typeof pontAndroid.imprimer === 'function') {
                 pontAndroid.imprimer(ev.name || 'Conducteur');
+            } else if (pontIOS('impression')) {
+                pontIOS('impression').postMessage(ev.name || 'Conducteur');
             } else if (typeof window.print === 'function') {
                 window.print();
             } else {
@@ -4369,6 +4376,12 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         };
 
         function downloadCSV(content, filename) {
+            // Le WKWebView d'iOS ne telecharge pas un lien <a download> : le
+            // fichier part dans la feuille de partage (Fichiers, AirDrop, Mail).
+            if (pontIOS('partagerFichier')) {
+                pontIOS('partagerFichier').postMessage({ nom: filename, contenu: content });
+                return;
+            }
             const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -5244,7 +5257,19 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 || document.getElementById('prompterOverlay').classList.contains('active');
         }
 
+        // Sur iOS, l'app garde l'ecran allume elle-meme : le Wake Lock du
+        // WKWebView n'est pas fiable selon les versions du systeme.
+        let ecranAllumeIOS = null;
+
         async function syncWakeLock() {
+            if (pontIOS('ecranAllume')) {
+                const allume = isPresenting() && document.visibilityState === 'visible';
+                if (allume !== ecranAllumeIOS) {
+                    ecranAllumeIOS = allume;
+                    pontIOS('ecranAllume').postMessage(allume);
+                }
+                return;
+            }
             if (!('wakeLock' in navigator)) return;
             try {
                 if (isPresenting() && !wakeLock && document.visibilityState === 'visible') {
