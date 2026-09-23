@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MCNote V3 - Événements & Bloc-notes</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="vendor/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="vendor/papaparse/5.3.2/papaparse.min.js"></script>
     <style>
         :root {
             --bg-primary: #0f0f1a;
@@ -2047,6 +2047,10 @@
                     title="Rechercher" aria-label="Rechercher dans le conducteur">
                 <i class="fas fa-search"></i>
             </button>
+            <button class="home-btn" onclick="event.stopPropagation(); changerTailleTexte()"
+                    title="Taille du texte" aria-label="Changer la taille du texte">
+                Aa
+            </button>
             <button class="home-btn" onclick="event.stopPropagation(); goToHome()">
                 <i class="fas fa-home"></i> Accueil
             </button>
@@ -2156,7 +2160,8 @@
                 <i class="fas fa-arrow-left"></i>
             </button>
             <div class="note-view-title" id="noteViewTitle">Note</div>
-            <div style="width:50px"></div>
+            <button class="note-view-back" onclick="changerTailleTexte()"
+                    title="Taille du texte" aria-label="Changer la taille du texte">Aa</button>
         </div>
         <div class="note-nav">
             <button class="note-nav-btn" onclick="prevNote()" id="prevNoteBtn">
@@ -2461,7 +2466,7 @@
 
     <!-- ==================== FIREBASE & APP SCRIPT ==================== -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeApp } from "./vendor/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
             createUserWithEmailAndPassword, 
@@ -2469,7 +2474,7 @@
             onAuthStateChanged, 
             signOut,
             sendPasswordResetEmail
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        } from "./vendor/firebasejs/11.6.1/firebase-auth.js";
         import { 
             initializeFirestore,
             persistentLocalCache,
@@ -2483,7 +2488,7 @@
             deleteDoc, 
             updateDoc, 
             onSnapshot
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        } from "./vendor/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCffPMQ1sVISIUDjYr2-cQ6MK3zEqMr2LE",
@@ -2512,6 +2517,10 @@
             || location.hostname === '127.0.0.1';
         const API_BASE = IS_NATIVE ? 'https://mcnote.netlify.app' : '';
 
+        // Ponts natifs de l'application iOS (MCNoteViewController.swift).
+        // Absents sur le web et sous Android : la fonction rend alors undefined.
+        const pontIOS = (nom) => window.webkit?.messageHandlers?.[nom];
+
         // ==================== STATE ====================
         let currentUser = null;
         let events = [];
@@ -2524,12 +2533,49 @@
         let editingNoteId = null;
 
         // Prompter
-        let prompterSpeed = 3;
+        let prompterSpeed = 1;
         let prompterPlaying = false;
         let prompterPosition = 0;
         let prompterAnimationId = null;
         let textSizeIndex = 1;
         const textSizes = ['size-sm', 'size-md', 'size-lg', 'size-xl'];
+
+        // ==================== TAILLE DU TEXTE ====================
+        // Toute l'interface est en rem : changer la taille de base de la page
+        // agrandit tout d'un bloc, texte, boutons et prompteur compris. Le
+        // bouton « Aa » fait défiler les crans et revient au plus petit après
+        // le plus grand. Le choix est retenu par appareil. Sans choix, une
+        // tablette part un cran au-dessus : lue à bout de bras, la taille
+        // d'un téléphone y est trop petite.
+        const TAILLES_TEXTE = [1, 1.15, 1.3, 1.5, 1.75];
+        const CLE_TAILLE_TEXTE = 'mcnote.tailleTexte';
+
+        function tailleTexteParDefaut() {
+            return window.matchMedia('(min-width: 700px)').matches ? 1.15 : 1;
+        }
+
+        function appliquerTailleTexte(facteur) {
+            document.documentElement.style.fontSize = (16 * facteur) + 'px';
+        }
+
+        let tailleTexte = (() => {
+            try {
+                const memo = parseFloat(localStorage.getItem(CLE_TAILLE_TEXTE));
+                if (TAILLES_TEXTE.includes(memo)) return memo;
+            } catch (e) { /* stockage indisponible : taille par défaut */ }
+            return tailleTexteParDefaut();
+        })();
+        appliquerTailleTexte(tailleTexte);
+
+        window.changerTailleTexte = () => {
+            const rang = TAILLES_TEXTE.indexOf(tailleTexte);
+            tailleTexte = TAILLES_TEXTE[(rang + 1) % TAILLES_TEXTE.length];
+            appliquerTailleTexte(tailleTexte);
+            try { localStorage.setItem(CLE_TAILLE_TEXTE, String(tailleTexte)); } catch (e) { }
+            showToast(`Taille du texte : ${Math.round(tailleTexte * 100)} %`);
+            // La zone de contenu a changé de hauteur : « ▼ suite » doit suivre.
+            if (typeof majIndicateurSuite === 'function') majIndicateurSuite();
+        };
 
         // ==================== AUTH ====================
         onAuthStateChanged(auth, (user) => {
@@ -3011,7 +3057,8 @@
         // ==================== EXPORT DU CONDUCTEUR ====================
         // Le conducteur est reconstruit en document imprimable, puis confie au
         // systeme. Sur le web c'est window.print() ; dans l'application le
-        // WebView Android l'ignore, d'ou le pont expose par MainActivity.
+        // WebView Android l'ignore, d'ou le pont expose par MainActivity. Le
+        // WKWebView d'iOS l'ignore aussi : pont MCNoteViewController.
         function construireVueImpression(ev) {
             const zone = document.getElementById('vueImpression');
             zone.textContent = '';
@@ -3106,6 +3153,8 @@
             const pontAndroid = window.ImpressionAndroid;
             if (pontAndroid && typeof pontAndroid.imprimer === 'function') {
                 pontAndroid.imprimer(ev.name || 'Conducteur');
+            } else if (pontIOS('impression')) {
+                pontIOS('impression').postMessage(ev.name || 'Conducteur');
             } else if (typeof window.print === 'function') {
                 window.print();
             } else {
@@ -4369,6 +4418,12 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         };
 
         function downloadCSV(content, filename) {
+            // Le WKWebView d'iOS ne telecharge pas un lien <a download> : le
+            // fichier part dans la feuille de partage (Fichiers, AirDrop, Mail).
+            if (pontIOS('partagerFichier')) {
+                pontIOS('partagerFichier').postMessage({ nom: filename, contenu: content });
+                return;
+            }
             const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
@@ -5244,7 +5299,19 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 || document.getElementById('prompterOverlay').classList.contains('active');
         }
 
+        // Sur iOS, l'app garde l'ecran allume elle-meme : le Wake Lock du
+        // WKWebView n'est pas fiable selon les versions du systeme.
+        let ecranAllumeIOS = null;
+
         async function syncWakeLock() {
+            if (pontIOS('ecranAllume')) {
+                const allume = isPresenting() && document.visibilityState === 'visible';
+                if (allume !== ecranAllumeIOS) {
+                    ecranAllumeIOS = allume;
+                    pontIOS('ecranAllume').postMessage(allume);
+                }
+                return;
+            }
             if (!('wakeLock' in navigator)) return;
             try {
                 if (isPresenting() && !wakeLock && document.visibilityState === 'visible') {

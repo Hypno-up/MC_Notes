@@ -1,7 +1,7 @@
 # MCNote V3
 
 Conducteurs d'événements et bloc-notes pour animateurs, avec prompteur intégré.
-Web (Netlify) + application Android (Capacitor).
+Web (Netlify) + applications Android et iOS/iPadOS (Capacitor).
 
 - **Web** : https://mcnote.netlify.app
 - **Fonctionnalités détaillées** : [FONCTIONNALITES.md](FONCTIONNALITES.md)
@@ -20,6 +20,7 @@ skills/mcnote-conducteur/         Compétence Claude : infos brutes → CSV prê
 skills/mcnote-conducteur.zip      La même, prête à téléverser dans Claude
 capacitor.config.json             Configuration de l'app Android
 android/                          Projet Android généré par Capacitor
+ios/                              Projet Xcode généré par Capacitor (iPhone + iPad)
 resources/icon.png, splash.png    Sources des icônes (1024 et 2732 px)
 templates/*.csv                   Modèles d'import, identiques à ceux de l'app
 MCNote-V3.apk                     Dernier APK construit, prêt à installer
@@ -81,6 +82,39 @@ La page est servie depuis `https://localhost` dans l'application. Tout appel
 **relatif** aux fonctions Netlify viserait alors le téléphone lui-même. D'où la
 constante `API_BASE` dans `index.html` : elle vaut `''` sur le web et l'URL
 absolue du site en natif. **Ne jamais réintroduire de `fetch('/.netlify/...')`.**
+
+---
+
+## Construire l'app iOS / iPadOS
+
+Même `index.html` que le web et l'APK, embarqué dans un projet Xcode.
+**Prérequis** : Xcode (les dépendances Capacitor arrivent par Swift Package Manager).
+
+```bash
+npm run ios          # copie index.html dans www/ puis dans le projet Xcode
+npm run ios:open     # ouvre ios/App/App.xcodeproj
+```
+
+Dans Xcode : choisir l'équipe de signature (cible *App* → *Signing & Capabilities*),
+puis lancer sur un simulateur ou un appareil. Pour TestFlight : *Product → Archive*.
+
+**À relancer après toute modification de `index.html`** : `npm run ios`.
+
+### Ce qui diffère d'Android
+
+Le WKWebView d'iOS ignore `window.print()`, ne télécharge pas les liens
+`<a download>` et n'assure pas le Wake Lock de façon fiable.
+`ios/App/App/MCNoteViewController.swift` expose trois ponts, appelés depuis
+`index.html` par `pontIOS(nom)` :
+
+| Pont | Rôle |
+|---|---|
+| `impression` | Export du conducteur → service d'impression (imprimante ou PDF) |
+| `ecranAllume` | Sans effet : l'app garde l'écran allumé tant qu'elle est au premier plan |
+| `partagerFichier` | Modèles CSV → feuille de partage (Fichiers, AirDrop, Mail) |
+
+La page est servie depuis `capacitor://localhost` : `IS_NATIVE` est vrai et
+`API_BASE` vise bien le site Netlify.
 
 ---
 
