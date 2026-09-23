@@ -10,6 +10,15 @@
 [build.environment]
   NODE_VERSION = "22"
 
+  # L'analyse de secrets de Netlify prend la cle Firebase du client pour une
+  # fuite et bloque la construction. Ce n'en est pas une : une cle Web Firebase
+  # est un identifiant public de projet, presente dans toute application web
+  # Firebase. La securite repose sur les regles Firestore, pas sur elle.
+  #
+  # On declare cette valeur precise plutot que de desactiver l'analyse : tout
+  # vrai secret qui viendrait a se glisser dans le depot sera toujours detecte.
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyCffPMQ1sVISIUDjYr2-cQ6MK3zEqMr2LE"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
