@@ -25,9 +25,19 @@ class MCNoteViewController: CAPBridgeViewController, WKScriptMessageHandler {
         }
     }
 
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        UIApplication.shared.isIdleTimerDisabled = false
+    // Sur scène, un écran qui se verrouille est une panne : tant que l'app est
+    // au premier plan, l'iPad ne se met jamais en veille, quelle que soit la
+    // page affichée. iOS rétablit la veille dès que l'app passe en arrière-plan.
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        UIApplication.shared.isIdleTimerDisabled = true
+        NotificationCenter.default.addObserver(self, selector: #selector(garderEcranAllume),
+                                               name: UIApplication.didBecomeActiveNotification,
+                                               object: nil)
+    }
+
+    @objc private func garderEcranAllume() {
+        UIApplication.shared.isIdleTimerDisabled = true
     }
 
     func userContentController(_ userContentController: WKUserContentController,
@@ -36,7 +46,9 @@ class MCNoteViewController: CAPBridgeViewController, WKScriptMessageHandler {
         case "impression":
             imprimer(titre: message.body as? String)
         case "ecranAllume":
-            UIApplication.shared.isIdleTimerDisabled = (message.body as? Bool) ?? false
+            // Réglé par l'app elle-même (voir viewDidAppear) : la page n'a plus
+            // la main, sinon elle rallumerait la veille à l'accueil.
+            break
         case "partagerFichier":
             guard let corps = message.body as? [String: Any],
                   let nom = corps["nom"] as? String,

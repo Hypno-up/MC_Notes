@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>MCNote V3 - Événements & Bloc-notes</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="vendor/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="vendor/papaparse/5.3.2/papaparse.min.js"></script>
     <style>
         :root {
             --bg-primary: #0f0f1a;
@@ -2461,7 +2461,7 @@
 
     <!-- ==================== FIREBASE & APP SCRIPT ==================== -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeApp } from "./vendor/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
             createUserWithEmailAndPassword, 
@@ -2469,7 +2469,7 @@
             onAuthStateChanged, 
             signOut,
             sendPasswordResetEmail
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        } from "./vendor/firebasejs/11.6.1/firebase-auth.js";
         import { 
             initializeFirestore,
             persistentLocalCache,
@@ -2483,7 +2483,7 @@
             deleteDoc, 
             updateDoc, 
             onSnapshot
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        } from "./vendor/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCffPMQ1sVISIUDjYr2-cQ6MK3zEqMr2LE",
