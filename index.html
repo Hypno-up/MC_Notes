@@ -549,13 +549,6 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        .popup-btn.suivant-btn {
-            background: var(--accent-primary);
-            color: #fff;
-        }
-
-        .popup-btn.suivant-btn:disabled { cursor: default; }
-
         .quick-note-section { position: relative; }
 
         .effacer-note {
@@ -1574,19 +1567,36 @@
             background: var(--bg-card);
             border-top: 1px solid rgba(255,255,255,0.1);
             display: flex;
-            justify-content: space-between;
+            align-items: stretch;
+            gap: 8px;
         }
 
         .popup-btn {
-            padding: 12px 20px;
+            padding: 12px 16px;
             border: none;
             border-radius: 10px;
             font-size: 0.95rem;
             cursor: pointer;
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+            white-space: nowrap;
         }
+
+        /* Retour et Prompteur portent le texte ; les deux fleches se contentent
+           de la place qu'il leur reste. */
+        .popup-btn.close-btn, .popup-btn.prompter-btn { flex: 1 1 auto; }
+
+        .popup-btn.nav-btn {
+            flex: 0 0 auto;
+            padding: 12px 15px;
+            background: var(--accent-primary);
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .popup-btn.nav-btn:disabled { cursor: default; }
 
         .popup-btn.close-btn {
             background: var(--danger);
@@ -2181,8 +2191,13 @@
             <button class="popup-btn close-btn" onclick="closePopup()">
                 <i class="fas fa-arrow-left"></i> Retour
             </button>
-            <button class="popup-btn suivant-btn" id="popupSuivantBtn" onclick="sequenceSuivanteDansPopup()">
-                Suivant <i class="fas fa-arrow-right"></i>
+            <button class="popup-btn nav-btn" id="popupPrecedentBtn" onclick="sequencePrecedenteDansPopup()"
+                    title="Séquence précédente" aria-label="Séquence précédente">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="popup-btn nav-btn" id="popupSuivantBtn" onclick="sequenceSuivanteDansPopup()"
+                    title="Séquence suivante" aria-label="Séquence suivante">
+                <i class="fas fa-chevron-right"></i>
             </button>
             <button class="popup-btn prompter-btn" onclick="startPrompterFromPopup()">
                 <i class="fas fa-scroll"></i> Prompteur
@@ -4383,10 +4398,13 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             zone.textContent = content.trim();
             zone.scrollTop = 0;   // on repart en haut de la nouvelle sequence
 
-            const derniere = currentSequenceIndex >= (currentEvent?.sequences?.length || 0) - 1;
-            const suivant = document.getElementById('popupSuivantBtn');
-            suivant.disabled = derniere;
-            suivant.style.opacity = derniere ? '0.4' : '1';
+            const total = currentEvent?.sequences?.length || 0;
+            const griser = (bouton, inactif) => {
+                bouton.disabled = inactif;
+                bouton.style.opacity = inactif ? '0.35' : '1';
+            };
+            griser(document.getElementById('popupPrecedentBtn'), currentSequenceIndex <= 0);
+            griser(document.getElementById('popupSuivantBtn'), currentSequenceIndex >= total - 1);
             return true;
         }
 
@@ -4396,16 +4414,21 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         };
 
         // Enchainer les sequences sans repasser par l'ecran principal.
-        window.sequenceSuivanteDansPopup = () => {
-            if (currentSequenceIndex >= (currentEvent?.sequences?.length || 0) - 1) return;
-            currentSequenceIndex++;
+        function allerDansPopup(pas) {
+            const total = currentEvent?.sequences?.length || 0;
+            const cible = currentSequenceIndex + pas;
+            if (cible < 0 || cible >= total) return;
+            currentSequenceIndex = cible;
             // L'ecran derriere suit, sinon on le retrouverait sur la mauvaise
             // sequence en fermant la popup.
             renderProgressSidebar();
             renderCurrentSequence();
             memoriserPosition();
             remplirPopup();
-        };
+        }
+
+        window.sequenceSuivanteDansPopup = () => allerDansPopup(1);
+        window.sequencePrecedenteDansPopup = () => allerDansPopup(-1);
 
         window.closePopup = () => document.getElementById('popupOverlay').classList.remove('active');
 
@@ -5301,6 +5324,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             // se desynchronisaient.
             if (document.getElementById('popupOverlay').classList.contains('active')) {
                 if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); sequenceSuivanteDansPopup(); }
+                if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); sequencePrecedenteDansPopup(); }
                 if (e.key === 'Escape') closePopup();
                 return;
             }
