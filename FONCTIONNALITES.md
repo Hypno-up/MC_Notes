@@ -168,6 +168,14 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
 - **Écran d'attente au lancement** : le formulaire de connexion apparaissait puis
   disparaissait le temps que Firebase réponde, donnant l'impression d'un
   rechargement à chaque retour
+- **Une lecture en échec n'efface plus la liste.** Chaque événement est lu
+  isolément : un refus sur l'un n'empêche plus les autres de s'afficher.
+  Le cas courant est la création — l'événement existe déjà localement, l'écoute
+  se déclenche, mais le serveur ne l'a pas encore enregistré et les règles des
+  sous-collections l'interrogent pour savoir à qui appartient le parent. Le
+  refus est donc temporaire : une relance va chercher les séquences manquantes,
+  jusqu'à trois fois. Auparavant, toute la liste était abandonnée et
+  l'événement qu'on venait d'importer n'apparaissait nulle part
 - **Chargement des séquences en parallèle** : elles étaient lues événement par
   événement, en autant d'allers-retours enchaînés
 - **Ancienne auto-sync toutes les 30 s** — uniquement quand un événement ou un bloc-notes issu de Google Sheets est **affiché à l'écran**
