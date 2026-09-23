@@ -110,7 +110,7 @@ Le WKWebView d'iOS ignore `window.print()`, ne télécharge pas les liens
 | Pont | Rôle |
 |---|---|
 | `impression` | Export du conducteur → service d'impression (imprimante ou PDF) |
-| `ecranAllume` | Écran maintenu allumé pendant le conducteur, une note ou le prompteur |
+| `ecranAllume` | Sans effet : l'app garde l'écran allumé tant qu'elle est au premier plan |
 | `partagerFichier` | Modèles CSV → feuille de partage (Fichiers, AirDrop, Mail) |
 
 La page est servie depuis `capacitor://localhost` : `IS_NATIVE` est vrai et
