@@ -151,9 +151,11 @@ compte authentifié lire les conducteurs des autres utilisateurs.
 
 ## Formats d'import CSV
 
-**Événement** — `timing,title,people,question_text,question_content`
+**Événement** — `timing,title,people,question_text,question_content,scene,type`
 Les lignes partageant `timing` + `title` forment une séquence ; chaque ligne y
-ajoute une question.
+ajoute une question. `scene` et `type` sont facultatives : une ligne
+`type = logistique` sort du conducteur et va dans l'onglet Notes logistique
+(contacts, régie, partenaires), où `scene` nomme la section.
 
 **Bloc-notes** — `title,content` — une ligne par note.
 

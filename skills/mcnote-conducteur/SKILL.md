@@ -23,7 +23,7 @@ travaille dans Google Sheets, le même contenu à coller dans sa feuille),
 En-tête, en minuscules, dans cet ordre :
 
 ```
-timing,title,people,question_text,question_content,scene
+timing,title,people,question_text,question_content,scene,type
 ```
 
 | Colonne | Contenu | Obligatoire |
@@ -33,9 +33,33 @@ timing,title,people,question_text,question_content,scene
 | `people` | Intervenants, club, personnes concernées | non |
 | `question_text` | Sous-titre : le sujet, l'angle, la consigne en une ligne | non |
 | `question_content` | Le contenu que l'animateur lit ou consulte. **Retours à la ligne autorisés** | non |
-| `scene` | Nom du regroupement (« Infos générales », « Matinée »…). **Toujours en dernier** | non |
+| `scene` | Nom du regroupement (« Infos générales », « Matinée »…) | non |
+| `type` | `logistique` sort la ligne du conducteur ; vide ou `sequence` l'y laisse. **Toujours en dernier** | non |
 
 \* Une ligne sans `timing` ni `title` est ignorée par l'application.
+
+### Notes logistique
+
+Une ligne `type = logistique` ne devient pas une séquence : elle va dans
+l'onglet **Notes logistique**, consultable à tout moment pendant l'événement.
+C'est là que vont les noms, les numéros, les fonctions, les partenaires à
+citer, les consignes techniques — tout ce qui doit rester à portée de main
+sans encombrer le déroulé.
+
+Les colonnes changent alors de sens :
+
+| Colonne | Sur une ligne logistique |
+|---|---|
+| `timing` | **inutilisée**, laisser vide |
+| `title` | l'intitulé de la fiche : un nom, une société, un lieu |
+| `people` | la fonction, le rôle, la catégorie |
+| `question_text` | l'information courte et repérable : téléphone, salle, horaire d'arrivée |
+| `question_content` | les détails, les précautions, ce qu'il ne faut pas oublier |
+| `scene` | la section de l'onglet : « Contacts », « Technique », « Partenaires »… |
+
+Un fichier sans colonne `type` fonctionne exactement comme avant : tout reste
+dans le conducteur. On n'ajoute la colonne que si on a des notes logistiques à
+y mettre.
 
 ### Bloc-notes
 

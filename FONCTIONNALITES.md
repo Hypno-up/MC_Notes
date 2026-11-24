@@ -43,11 +43,19 @@ Onglets **Événements** / **Bloc-notes**. Chaque mode a sa grille de cartes et 
 > Airtable a été retiré le 28/08/2026 : source inutilisée, la liaison Google Sheets
 > la remplace intégralement.
 
-**Format CSV attendu :** `timing,title,people,question_text,question_content,scene`
+**Format CSV attendu :** `timing,title,people,question_text,question_content,scene,type`
 
-La colonne `scene` est **facultative** et se place en dernier. Absente, elle
-n'est simplement pas gérée — et surtout, la synchronisation n'écrase alors pas
-les scènes attribuées à la main depuis le téléphone.
+Les colonnes `scene` et `type` sont **facultatives** et se placent en fin de
+ligne. `scene` absente, elle n'est simplement pas gérée — et surtout, la
+synchronisation n'écrase alors pas les scènes attribuées à la main depuis le
+téléphone.
+
+`type` vaut `logistique` ou rien. Une ligne `logistique` quitte le conducteur
+et alimente l'onglet **Notes logistique** (bouton valise, visible seulement si
+l'événement en contient) : `scene` y devient le nom de la section, `title`
+l'intitulé de la fiche, `people` la fonction, `question_text` l'information
+courte, `question_content` les détails. `timing` n'y sert pas. Un fichier sans
+colonne `type` se comporte comme avant : tout reste dans le déroulé.
 Les lignes partageant `timing`+`title` sont regroupées en une séquence ; chaque ligne ajoute une question.
 
 **L'ordre du conducteur est celui de la feuille**, pas l'ordre alphabétique des

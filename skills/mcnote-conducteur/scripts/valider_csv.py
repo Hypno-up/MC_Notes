@@ -18,6 +18,7 @@ import unicodedata
 
 COLONNES_EVENEMENT = ['timing', 'title', 'people', 'question_text', 'question_content']
 COLONNES_BLOC_NOTES = ['title', 'content']
+COLONNES_FACULTATIVES = ['scene', 'type']
 TAILLE_PALETTE = 8          # couleurs distinctes pour les scenes dans l'app
 CONTENU_LONG = 1500         # au-dela, la zone defile : acceptable mais a savoir
 
@@ -69,18 +70,18 @@ def main(chemin):
         manquantes = [c for c in COLONNES_EVENEMENT if c not in entetes]
         print(f"ERREUR  En-tetes non reconnus : {lignes[0]}")
         print(f"        Pour un evenement il manque : {manquantes}")
-        print(f"        Attendu : {','.join(COLONNES_EVENEMENT)}[,scene]")
+        print(f"        Attendu : {','.join(COLONNES_EVENEMENT)}[,scene][,type]")
         print(f"        Ou, pour un bloc-notes : {','.join(COLONNES_BLOC_NOTES)}")
         return 1
 
-    connues = set(COLONNES_EVENEMENT + ['scene'] if genre == 'evenement' else COLONNES_BLOC_NOTES)
+    connues = set(COLONNES_EVENEMENT + COLONNES_FACULTATIVES if genre == 'evenement' else COLONNES_BLOC_NOTES)
     inconnues = [h for h in entetes if h and h not in connues]
     if inconnues:
         avertissements.append(f"Colonnes ignorees par MC Note : {inconnues}")
 
-    if genre == 'evenement' and 'scene' in entetes and entetes[-1] != 'scene':
-        avertissements.append("La colonne scene n'est pas en derniere position. MC Note la lit "
-                              "quand meme, mais le bouton « Copier » de l'app la place en dernier.")
+    if genre == 'evenement' and 'scene' in entetes and entetes[-1] not in ('scene', 'type'):
+        avertissements.append("Les colonnes scene et type ne sont pas en fin de ligne. MC Note les lit "
+                              "quand meme, mais le bouton « Copier » de l'app les place en dernier.")
 
     # ---- coherence du nombre de champs : trahit un guillemet mal ferme ----
     for numero, ligne in enumerate(donnees, start=2):
@@ -101,11 +102,38 @@ def main(chemin):
         return rapport(erreurs, avertissements)
 
     # ---- evenement ----
+    # Les lignes « logistique » ne sont pas des sequences : elles alimentent
+    # l'onglet Notes logistique. Ni horaire, ni ordre, ni couleur de scene.
+    fiches_logi = []
+    numerotees = list(enumerate(enregistrements, start=2))
+    if 'type' in entetes:
+        restants = []
+        for numero, r in numerotees:
+            valeur = normaliser(r.get('type', ''))
+            if valeur == 'logistique':
+                if not r.get('title'):
+                    avertissements.append(f"Ligne {numero} : ligne logistique sans title. "
+                                          "L'intitule de la fiche serait vide.")
+                if not r.get('scene'):
+                    avertissements.append(f"Ligne {numero} : ligne logistique sans scene. "
+                                          "Elle atterrira dans une section « Autres ».")
+                if r.get('timing'):
+                    avertissements.append(f"Ligne {numero} : timing « {r['timing']} » sur une ligne "
+                                          "logistique. MC Note l'ignore, la fiche n'a pas d'horaire.")
+                fiches_logi.append(r)
+            else:
+                if valeur and valeur != 'sequence':
+                    avertissements.append(f"Ligne {numero} : type « {r.get('type')} » inconnu. "
+                                          "Seul « logistique » sort du conducteur ; tout le reste "
+                                          "y reste. Ecrire « sequence » ou laisser vide.")
+                restants.append((numero, r))
+        numerotees = restants
+
     sequences = {}
     ordre = []
     premiere_seance = None      # numero de la premiere sequence horodatee
     horaire_precedent = None    # (minutes, timing, numero)
-    for numero, r in enumerate(enregistrements, start=2):
+    for numero, r in numerotees:
         timing, titre = r.get('timing', ''), r.get('title', '')
         if not timing and not titre:
             avertissements.append(f"Ligne {numero} : ni timing ni title, elle sera ignoree.")
@@ -200,11 +228,22 @@ def main(chemin):
     else:
         distinctes = []
 
-    print(f"Evenement : {len(enregistrements)} lignes -> {len(sequences)} sequences.")
+    print(f"Evenement : {len(numerotees)} lignes de conducteur -> {len(sequences)} sequences.")
     if distinctes:
         for nom in distinctes:
             n = sum(1 for c in ordre if sequences[c]['scene'] == nom)
             print(f"  scene « {nom} » : {n} sequence(s)")
+
+    if fiches_logi:
+        sections = []
+        for f in fiches_logi:
+            nom = f.get('scene') or 'Autres'
+            if nom not in sections:
+                sections.append(nom)
+        print(f"Notes logistique : {len(fiches_logi)} fiche(s) en {len(sections)} section(s).")
+        for nom in sections:
+            n = sum(1 for f in fiches_logi if (f.get('scene') or 'Autres') == nom)
+            print(f"  section « {nom} » : {n} fiche(s)")
     return rapport(erreurs, avertissements)
 
 

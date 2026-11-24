@@ -1966,6 +1966,94 @@
             .progress-tooltip { display: none !important; }
         }
 
+            /* Deroule replie : la sequence prend toute la largeur. Pensé pour
+               les fiches denses — une liste de trente-sept clubs, un texte
+               d'annonce long — ou chaque centimetre compte. */
+            #sequencePage.deroule-masque .progress-sidebar {
+                transform: translateX(-100%);
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            #sequencePage.deroule-masque .sequence-main,
+            #sequencePage.deroule-masque .prev-sequence-bar { padding-left: 22px; }
+            #sequencePage.deroule-masque .nav-bas { padding-left: 0; }
+
+            .progress-sidebar {
+                transition: transform 0.22s ease, opacity 0.22s ease;
+            }
+
+            .sequence-main, .prev-sequence-bar, .nav-bas {
+                transition: padding-left 0.22s ease;
+            }
+        }
+
+        .logi-section {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--accent-secondary);
+            margin: 18px 0 8px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .logi-section:first-child { margin-top: 0; }
+
+        .logi-fiche {
+            padding: 11px 13px;
+            margin-bottom: 8px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--accent-primary);
+        }
+
+        .logi-fiche .intitule {
+            font-weight: 700;
+            font-size: 0.98rem;
+        }
+
+        .logi-fiche .fonction {
+            font-size: 0.85rem;
+            color: var(--accent-secondary);
+            margin-top: 1px;
+        }
+
+        /* L'information courte — un numero, une salle — est ce qu'on vient
+           chercher en urgence : elle doit sauter aux yeux. */
+        .logi-fiche .info {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 3px 10px;
+            border-radius: 7px;
+            background: rgba(255, 255, 255, 0.09);
+            font-size: 0.92rem;
+            font-weight: 600;
+            user-select: text;
+        }
+
+        .logi-fiche .details {
+            margin-top: 7px;
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            white-space: pre-wrap;
+        }
+
+        @media (min-width: 820px) {
+            .logi-fiche .intitule { font-size: 1.15rem; }
+            .logi-fiche .fonction { font-size: 0.98rem; }
+            .logi-fiche .info     { font-size: 1.08rem; }
+            .logi-fiche .details  { font-size: 1rem; }
+        }
+
+        /* Le bouton de repli n'a de sens que la ou le deroule existe. */
+        .btn-deroule { display: none; }
+
+        @media (min-width: 820px) {
+            .btn-deroule { display: flex; }
+        }
+
         /* Au-dela de 1100 px — iPad posé en paysage — le conducteur se lit de
            plus loin encore. */
         @media (min-width: 1100px) {
@@ -2144,6 +2232,15 @@
                 <span class="time">--:--</span>
                 <span class="title">--</span>
             </div>
+            <button class="home-btn btn-deroule" onclick="event.stopPropagation(); basculerDeroule()"
+                    title="Afficher ou masquer le déroulé" aria-label="Afficher ou masquer le déroulé">
+                <i class="fas fa-table-columns" id="icoDeroule"></i>
+            </button>
+            <button class="home-btn btn-logistique" id="btnLogistique" style="display:none;"
+                    onclick="event.stopPropagation(); ouvrirLogistique()"
+                    title="Notes logistique" aria-label="Notes logistique">
+                <i class="fas fa-briefcase"></i>
+            </button>
             <button class="home-btn" onclick="event.stopPropagation(); ouvrirRecherche()"
                     title="Rechercher" aria-label="Rechercher dans le conducteur">
                 <i class="fas fa-search"></i>
@@ -2522,6 +2619,20 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="logistiqueModal">
+        <div class="modal-content" style="max-width: 760px;">
+            <div class="modal-header">
+                <h2><i class="fas fa-briefcase"></i> Notes logistique</h2>
+                <button class="modal-close" onclick="fermerLogistique()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="listeLogistique"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="scenesModal">
         <div class="modal-content" style="max-width: 520px;">
             <div class="modal-header">
@@ -2869,8 +2980,7 @@
             await Promise.all(incomplets.map(async (ev) => {
                 try {
                     const seqSnap = await getDocs(collection(db, "events", ev.id, "sequences"));
-                    ev.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
-                    trierSequences(ev.sequences);
+                    repartirSequences(ev, seqSnap.docs.map(s => ({ id: s.id, ...s.data() })));
                 } catch (e) {
                     reste = true;
                 }
@@ -2903,8 +3013,7 @@
                     data.invite = data.owner !== currentUser.uid;
                     try {
                         const seqSnap = await getDocs(collection(db, "events", docSnap.id, "sequences"));
-                        data.sequences = seqSnap.docs.map(s => ({ id: s.id, ...s.data() }));
-                        trierSequences(data.sequences);
+                        repartirSequences(data, seqSnap.docs.map(s => ({ id: s.id, ...s.data() })));
                     } catch (e) {
                         // Cas courant : l'evenement vient d'etre cree. Il existe
                         // deja localement, donc cette ecoute se declenche, mais le
@@ -2914,6 +3023,7 @@
                         console.warn('sequences de', docSnap.id, ':', e.code || e.message);
                         const connu = events.find(ev => ev.id === docSnap.id);
                         data.sequences = connu?.sequences || [];
+                        data.logistique = connu?.logistique || [];
                         aRetenter = true;
                     }
                     return data;
@@ -3403,6 +3513,7 @@
             document.getElementById('sequencePage').style.display = 'flex';
             renderProgressSidebar();
             renderCurrentSequence();
+            appliquerEtatDeroule();
             memoriserPosition();
             // On regarde tout de suite si la feuille a bouge, sans rien appliquer.
             veillerSurLaFeuille();
@@ -4144,6 +4255,119 @@
 
         window.fermerScenes = () => document.getElementById('scenesModal').classList.remove('active');
 
+        // ==================== NOTES LOGISTIQUE ====================
+        // Contacts, partenaires, technique, lieux : tout ce qui ne se joue pas
+        // mais qu'on doit retrouver en trois secondes. Les lignes viennent de la
+        // feuille, marquees « logistique » dans la colonne `type`, et les
+        // colonnes existantes y prennent un autre sens :
+        //   scene          -> la section       title -> l'intitule
+        //   people         -> la fonction      question_text    -> l'info courte
+        //   question_content -> les details
+        function majBoutonLogistique() {
+            const bouton = document.getElementById('btnLogistique');
+            if (!bouton) return;
+            // Un bouton qui n'ouvre rien est du bruit : il n'apparait que si
+            // l'evenement porte effectivement de la logistique.
+            bouton.style.display = (currentEvent?.logistique?.length) ? 'flex' : 'none';
+        }
+
+        window.ouvrirLogistique = () => {
+            const fiches = currentEvent?.logistique || [];
+            const zone = document.getElementById('listeLogistique');
+            zone.textContent = '';
+
+            if (!fiches.length) {
+                const vide = document.createElement('p');
+                vide.style.cssText = 'color:var(--text-secondary);font-size:0.9rem;';
+                vide.textContent = "Aucune note logistique. Ajoutez une colonne « type » "
+                    + "dans votre feuille et marquez ces lignes « logistique ».";
+                zone.appendChild(vide);
+            }
+
+            let sectionAffichee = null;
+            fiches.forEach(f => {
+                const section = (f.scene || '').trim() || 'Divers';
+                if (section !== sectionAffichee) {
+                    sectionAffichee = section;
+                    const titre = document.createElement('div');
+                    titre.className = 'logi-section';
+                    titre.textContent = section;
+                    zone.appendChild(titre);
+                }
+
+                const fiche = document.createElement('div');
+                fiche.className = 'logi-fiche';
+
+                const intitule = document.createElement('div');
+                intitule.className = 'intitule';
+                intitule.textContent = f.title || 'Sans intitulé';
+                fiche.appendChild(intitule);
+
+                if (f.people) {
+                    const fonction = document.createElement('div');
+                    fonction.className = 'fonction';
+                    fonction.textContent = f.people;
+                    fiche.appendChild(fonction);
+                }
+
+                // question_text porte l'information courte, question_content les
+                // details : c'est la convention annoncee dans la documentation.
+                const premiere = (f.questions || [])[0] || {};
+                if (premiere.text) {
+                    const info = document.createElement('div');
+                    info.className = 'info';
+                    info.textContent = premiere.text;
+                    fiche.appendChild(info);
+                }
+
+                const details = (f.questions || [])
+                    .map(q => q.content)
+                    .filter(Boolean)
+                    .join('\n\n');
+                if (details) {
+                    const bloc = document.createElement('div');
+                    bloc.className = 'details';
+                    bloc.textContent = details;
+                    fiche.appendChild(bloc);
+                }
+
+                zone.appendChild(fiche);
+            });
+
+            document.getElementById('logistiqueModal').classList.add('active');
+        };
+
+        window.fermerLogistique = () =>
+            document.getElementById('logistiqueModal').classList.remove('active');
+
+        // ==================== REPLI DU DEROULE ====================
+        // Sur tablette, la colonne de gauche prend 272 px. Utile pour se situer,
+        // encombrante sur une fiche dense. Le choix est retenu d'une fois sur
+        // l'autre : on ne veut pas le refaire a chaque ouverture, encore moins
+        // en plein evenement.
+        const CLE_DEROULE = 'mcnote.deroule';
+        let derouleMasque = false;
+        try { derouleMasque = localStorage.getItem(CLE_DEROULE) === 'masque'; } catch (e) { /* sans gravite */ }
+
+        function appliquerEtatDeroule() {
+            const page = document.getElementById('sequencePage');
+            if (!page) return;
+            page.classList.toggle('deroule-masque', derouleMasque);
+            const ico = document.getElementById('icoDeroule');
+            // L'icone annonce ce que fera le bouton, pas l'etat courant.
+            if (ico) ico.className = derouleMasque ? 'fas fa-table-columns' : 'fas fa-maximize';
+        }
+
+        window.basculerDeroule = () => {
+            derouleMasque = !derouleMasque;
+            try { localStorage.setItem(CLE_DEROULE, derouleMasque ? 'masque' : 'visible'); }
+            catch (e) { /* mode prive : le choix vaut pour la session */ }
+            appliquerEtatDeroule();
+            showToast(derouleMasque ? 'Déroulé masqué' : 'Déroulé affiché');
+        };
+
+        appliquerEtatDeroule();
+
         window.goToSequence = (i) => {
             currentSequenceIndex = i;
             renderProgressSidebar();
@@ -4187,6 +4411,7 @@
             document.getElementById('currentPeople').textContent = seq.people || '';
             majBandeauScene();
             majEcartHoraire();
+            majBoutonLogistique();
             afficherBoutonMiseAJour();
 
             let content = '';
@@ -4542,16 +4767,19 @@
 
         // ==================== TEMPLATE DOWNLOADS ====================
         window.downloadEventTemplate = () => {
-            const csvContent = `timing,title,people,question_text,question_content,scene
-08:00,Accueil et café,Tous les participants,Bienvenue,Accueil des participants avec café et viennoiseries. Remise des badges.,Accueil
-08:30,Introduction,Animateur,Présentation de la journée,Bonjour à tous et bienvenue ! Nous allons passer une journée riche en découvertes. Voici le programme...,Accueil
-09:00,Session 1,Intervenant A,Premier sujet,Contenu détaillé de la première session. Points clés à aborder pendant cette intervention.,Matinée
-10:30,Pause café,Tous,Networking,Pause de 20 minutes pour le réseautage et les échanges informels.,Matinée
-10:50,Session 2,Intervenant B,Deuxième sujet,Contenu de la deuxième session avec les éléments importants à présenter.,Matinée
-12:30,Déjeuner,Tous les participants,Repas,Déjeuner au restaurant partenaire. Tables réservées au nom de l'événement.,Déjeuner
-14:00,Atelier pratique,Animateur + Participants,Mise en pratique,Exercices pratiques en petits groupes. Instructions et objectifs de l'atelier.,Après-midi
-15:30,Questions/Réponses,Panel,Échanges avec le public,Session de questions-réponses avec tous les intervenants. Questions préparées et questions du public.,Après-midi
-16:00,Clôture,Animateur,Remerciements et conclusion,Merci à tous pour votre participation ! Résumé des points clés et informations pour la suite.,Clôture`;
+            const csvContent = `timing,title,people,question_text,question_content,scene,type
+08:00,Accueil et café,Tous les participants,Bienvenue,Accueil des participants avec café et viennoiseries. Remise des badges.,Accueil,
+08:30,Introduction,Animateur,Présentation de la journée,Bonjour à tous et bienvenue ! Nous allons passer une journée riche en découvertes. Voici le programme...,Accueil,
+09:00,Session 1,Intervenant A,Premier sujet,Contenu détaillé de la première session. Points clés à aborder pendant cette intervention.,Matinée,
+10:30,Pause café,Tous,Networking,Pause de 20 minutes pour le réseautage et les échanges informels.,Matinée,
+10:50,Session 2,Intervenant B,Deuxième sujet,Contenu de la deuxième session avec les éléments importants à présenter.,Matinée,
+12:30,Déjeuner,Tous les participants,Repas,Déjeuner au restaurant partenaire. Tables réservées au nom de l'événement.,Déjeuner,
+14:00,Atelier pratique,Animateur + Participants,Mise en pratique,Exercices pratiques en petits groupes. Instructions et objectifs de l'atelier.,Après-midi,
+15:30,Questions/Réponses,Panel,Échanges avec le public,Session de questions-réponses avec tous les intervenants. Questions préparées et questions du public.,Après-midi,
+16:00,Clôture,Animateur,Remerciements et conclusion,Merci à tous pour votre participation ! Résumé des points clés et informations pour la suite.,Clôture,
+,Marie Dupont,Coordinatrice de l'événement,06 12 34 56 78,Sur place dès 7h30. Prévenir en cas de retard d'un intervenant.,Contacts,logistique
+,Régie son et lumière,Technique,Loge côté cour,Micro HF n°2 en secours. Coupure musique sur signe de la main.,Technique,logistique
+,Nom du partenaire,Partenaire principal,,À citer à l'ouverture et à la clôture.,Partenaires,logistique`;
             
             downloadCSV(csvContent, 'modele-evenement.csv');
             showToast('Modèle téléchargé !');
@@ -4873,6 +5101,10 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             console.log('Event created with ID:', eventRef.id);
             
             const aColonneScene = (parsed.meta.fields || []).includes('scene');
+            // La colonne `type` est facultative. Une ligne marquee « logistique »
+            // quitte le conducteur pour l'onglet du meme nom. Absente, tout reste
+            // sequence : les feuilles existantes fonctionnent sans retouche.
+            const aColonneType = (parsed.meta.fields || []).includes('type');
 
             const groups = new Map();
             parsed.data.forEach((row, index) => {
@@ -4892,7 +5124,8 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         people: (row.people || '').trim(), 
                         questions: [], 
                         validated: false,
-                        scene: aColonneScene ? (row.scene || '').trim() : ''
+                        scene: aColonneScene ? (row.scene || '').trim() : '',
+                        type: aColonneType && estLogistique(row.type) ? 'logistique' : 'sequence'
                     });
                 }
                 const qText = (row.question_text || '').trim();
@@ -5095,6 +5328,23 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
         // Ici on rapproche ligne à ligne : on met à jour, on ajoute, on supprime,
         // et on ne touche jamais aux champs saisis par l'utilisateur.
 
+        // Tolerant sur la casse et les accents : « Logistique », « LOGISTIQUE ».
+        function estLogistique(valeur) {
+            return normaliser(valeur) === 'logistique';
+        }
+
+        // Conducteur et logistique partagent la meme sous-collection Firestore :
+        // la synchronisation, la deduplication et les regles de securite valent
+        // alors pour les deux sans une ligne de plus. La separation se fait ici,
+        // a l'affichage, pour que tout le code du conducteur reste intact.
+        function repartirSequences(ev, liste) {
+            ev.sequences = liste.filter(x => x.type !== 'logistique');
+            ev.logistique = liste.filter(x => x.type === 'logistique');
+            trierSequences(ev.sequences);
+            ev.logistique.sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
+            return ev.sequences;
+        }
+
         function parseSheetSequences(csvText) {
             const parsed = Papa.parse(csvText, {
                 header: true,
@@ -5105,6 +5355,10 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             // renseigne pas le champ : la synchronisation n'ecrasera donc pas
             // une scene attribuee a la main depuis le telephone.
             const aColonneScene = (parsed.meta.fields || []).includes('scene');
+            // La colonne `type` est facultative. Une ligne marquee « logistique »
+            // quitte le conducteur pour l'onglet du meme nom. Absente, tout reste
+            // sequence : les feuilles existantes fonctionnent sans retouche.
+            const aColonneType = (parsed.meta.fields || []).includes('type');
 
             const groups = new Map();
             parsed.data.forEach(row => {
@@ -5121,7 +5375,8 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                         ordre: groups.size * 10,
                         people: (row.people || '').trim(),
                         questions: [],
-                        ...(aColonneScene ? { scene: (row.scene || '').trim() } : {})
+                        ...(aColonneScene ? { scene: (row.scene || '').trim() } : {}),
+                        ...(aColonneType ? { type: estLogistique(row.type) ? 'logistique' : 'sequence' } : {})
                     });
                 }
                 const qText = (row.question_text || '').trim();
@@ -5273,8 +5528,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                     }
                 }
 
-                trierSequences(existing);
-                eventData.sequences = existing;
+                repartirSequences(eventData, existing);
                 // Un invité n'a pas le droit d'écrire sur le document parent :
                 // tenter l'horodatage ferait échouer toute la synchronisation.
                 if (!eventData.invite) {
@@ -5282,7 +5536,7 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
                 }
 
                 if (currentEvent && currentEvent.id === id) {
-                    currentEvent.sequences = existing;
+                    repartirSequences(currentEvent, existing);
                     if (currentSequenceIndex >= existing.length) currentSequenceIndex = Math.max(0, existing.length - 1);
                     renderProgressSidebar();
                     renderCurrentSequence();
