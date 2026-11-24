@@ -6,3 +6,5 @@ android/build/
 android/.gradle/
 www/
 firestore-debug.log
+ios/App/build/
+ios/App/build-neuf/
