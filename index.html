@@ -1069,6 +1069,9 @@
 
         .content-text {
             flex: 1;
+            /* Les sauts vers un repere lisent offsetTop : la zone doit donc
+               servir elle-meme de reference de position. */
+            position: relative;
             overflow-y: auto;
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
@@ -1554,6 +1557,7 @@
 
         .popup-content {
             flex: 1;
+            position: relative;
             overflow-y: auto;
             padding: 20px;
             font-size: 1.1rem;
@@ -2059,6 +2063,194 @@
 
         /* Au-dela de 1100 px — iPad posé en paysage — le conducteur se lit de
            plus loin encore. */
+        /* ==================== REPERES DANS LE TEXTE ==================== */
+        .barre-reperes {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            overscroll-behavior-x: contain;
+            padding: 2px 0 8px;
+            scrollbar-width: none;
+        }
+
+        .barre-reperes::-webkit-scrollbar { display: none; }
+        .barre-reperes.dans-popup { padding: 8px 20px; }
+
+        .puce-repere {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            max-width: 190px;
+            padding: 7px 12px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .puce-repere.manuel {
+            border-color: var(--accent-secondary);
+            background: rgba(139, 92, 246, 0.16);
+        }
+
+        .puce-repere i { opacity: 0.8; font-size: 0.72rem; }
+
+        /* Le texte n'est plus un bloc unique : chaque ligne est atteignable,
+           c'est ce qui permet d'y poser un marqueur. */
+        .ligne-texte { white-space: pre-wrap; }
+        .ligne-texte.vide { height: 0.9em; }
+
+        .bloc-titre {
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin-top: 0.6em;
+        }
+
+        .bloc-titre:first-child { margin-top: 0; }
+
+        .ligne-texte.marquee {
+            box-shadow: inset 3px 0 0 var(--accent-secondary);
+            padding-left: 9px;
+        }
+
+        /* Mode pose de repere : on signale que le texte est devenu cliquable. */
+        .content-text.mode-repere .ligne-texte:not(.vide),
+        .popup-content.mode-repere .ligne-texte:not(.vide) {
+            cursor: pointer;
+            border-radius: 6px;
+            background: rgba(139, 92, 246, 0.07);
+            box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+            margin-bottom: 2px;
+        }
+
+        .action-icon-btn.repere-btn.actif {
+            background: var(--accent-secondary);
+            color: #fff;
+        }
+
+        .popup-zone { position: relative; flex: 1; display: flex; min-height: 0; }
+
+        /* Revenir exactement ou on lisait : le bouton n'apparait qu'apres un saut. */
+        .btn-retour-lecture {
+            position: absolute;
+            right: 14px;
+            bottom: 14px;
+            z-index: 5;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 999px;
+            background: var(--accent-primary);
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+        }
+
+        @media (min-width: 820px) {
+            .puce-repere { font-size: 0.9rem; max-width: 240px; padding: 9px 14px; }
+            .btn-retour-lecture { font-size: 0.95rem; padding: 12px 18px; }
+        }
+
+        /* ==================== HORLOGE ET MINUTEUR ==================== */
+        .bandeau-minuteur {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+            padding: 7px 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .horloge {
+            font-variant-numeric: tabular-nums;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            letter-spacing: 0.03em;
+        }
+
+        .compte-a-rebours {
+            font-variant-numeric: tabular-nums;
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            color: var(--text-primary);
+        }
+
+        /* Trois seuils, parce qu'en scene on lit une couleur avant un chiffre. */
+        .compte-a-rebours.bientot { color: var(--warning); }
+        .compte-a-rebours.depasse { color: var(--danger); }
+        .compte-a-rebours.arret   { color: var(--text-secondary); font-size: 1.05rem; font-weight: 700; }
+
+        /* Quelle sequence est chronometree : indispensable des qu'on consulte
+           une autre fiche pendant que le temps tourne. */
+        .minuteur-cible {
+            font-size: 0.72rem;
+            color: var(--accent-secondary);
+            font-weight: 600;
+            max-width: 42%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .minuteur-boutons {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .mini-btn {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .mini-btn.marche { background: var(--accent-primary); }
+        .mini-btn.marche.en-cours { background: rgba(245, 158, 11, 0.9); }
+        .mini-btn:active { transform: scale(0.96); }
+
+        .rappel-minuteur {
+            font-variant-numeric: tabular-nums;
+            font-size: 1.05rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            white-space: nowrap;
+        }
+
+        .rappel-minuteur.bientot { background: rgba(245, 158, 11, 0.25); color: var(--warning); }
+        .rappel-minuteur.depasse { background: rgba(239, 68, 68, 0.25); color: var(--danger); }
+
+        @media (min-width: 820px) {
+            .horloge { font-size: 1.1rem; }
+            .compte-a-rebours { font-size: 1.7rem; }
+            .minuteur-cible { font-size: 0.82rem; }
+            .mini-btn { font-size: 0.9rem; padding: 9px 13px; }
+        }
+
         @media (min-width: 1100px) {
             .content-text { font-size: 1.4rem; }
             .sequence-title { font-size: 2rem; }
@@ -2278,6 +2470,28 @@
                     <div class="sequence-time" id="currentTime">--:--</div>
                     <span class="ecart-horaire" id="ecartHoraire" style="display:none;"></span>
                 </div>
+
+                <!-- Horloge et compte a rebours. Le minuteur appartient a une
+                     sequence donnee et continue de tourner quand l'animateur va
+                     consulter ailleurs : c'est tout l'interet. -->
+                <div class="bandeau-minuteur" id="bandeauMinuteur">
+                    <span class="horloge" id="horloge">--:--:--</span>
+                    <span class="compte-a-rebours" id="compteARebours">--:--</span>
+                    <span class="minuteur-cible" id="minuteurCible"></span>
+                    <span class="minuteur-boutons">
+                        <button class="mini-btn" id="minuteurMoins" onclick="reglerMinuteur(-5)"
+                                title="5 minutes de moins" aria-label="5 minutes de moins">−5</button>
+                        <button class="mini-btn" id="minuteurPlus" onclick="reglerMinuteur(5)"
+                                title="5 minutes de plus" aria-label="5 minutes de plus">+5</button>
+                        <button class="mini-btn marche" id="minuteurMarche" onclick="basculerMinuteur()">
+                            <i class="fas fa-play"></i> <span id="minuteurMarcheTexte">Démarrer</span>
+                        </button>
+                        <button class="mini-btn" id="minuteurRaz" onclick="remettreMinuteur()"
+                                title="Remettre à zéro" aria-label="Remettre à zéro" style="display:none;">
+                            <i class="fas fa-rotate-left"></i>
+                        </button>
+                    </span>
+                </div>
                 <div class="sequence-title" id="currentTitle">--</div>
                 <div class="sequence-people" id="currentPeople"></div>
                 <button class="maj-dispo" id="majDispo" onclick="appliquerMiseAJour()" style="display:none;">
@@ -2287,9 +2501,17 @@
             </div>
 
             <div class="sequence-content">
+                <!-- Reperes : les intitules de la feuille, plus les marqueurs
+                     poses au doigt. Une table ronde a huit invites se parcourt
+                     sans jamais remonter le texte a la main. -->
+                <div class="barre-reperes" id="barreReperes" style="display:none;"></div>
                 <div class="content-zone" id="contentZone">
                     <div class="content-text" id="contentText"></div>
                     <div class="suite-badge">▼ suite</div>
+                    <button class="btn-retour-lecture" id="btnRetourLecture"
+                            onclick="revenirOuJetais('contentText')" style="display:none;">
+                        <i class="fas fa-arrow-turn-down fa-rotate-180"></i> Retour
+                    </button>
                 </div>
 
                 <div class="quick-note-section">
@@ -2307,6 +2529,10 @@
                     <button class="action-icon-btn ajout-btn" onclick="ajouterSequence()"
                             title="Ajouter une séquence" aria-label="Ajouter une séquence">
                         <i class="fas fa-plus"></i>
+                    </button>
+                    <button class="action-icon-btn repere-btn" id="repereBtn" onclick="basculerModeRepere()"
+                            title="Poser des repères" aria-label="Poser des repères">
+                        <i class="fas fa-bookmark"></i>
                     </button>
                     <button class="action-icon-btn expand-btn" id="expandBtn" onclick="openPopup()">
                         <i class="fas fa-expand"></i> Lire
@@ -2398,11 +2624,19 @@
     <div class="popup-overlay" id="popupOverlay">
         <div class="popup-header">
             <h3 id="popupTitle">--</h3>
+            <span class="rappel-minuteur" id="minuteurPopup" style="display:none;"></span>
             <button class="popup-close" onclick="closePopup()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="popup-content" id="popupContent"></div>
+        <div class="barre-reperes dans-popup" id="barreReperesPopup" style="display:none;"></div>
+        <div class="popup-zone">
+            <div class="popup-content" id="popupContent"></div>
+            <button class="btn-retour-lecture" id="btnRetourPopup"
+                    onclick="revenirOuJetais('popupContent')" style="display:none;">
+                <i class="fas fa-arrow-turn-down fa-rotate-180"></i> Retour
+            </button>
+        </div>
         <div class="popup-footer">
             <button class="popup-btn close-btn" onclick="closePopup()">
                 <i class="fas fa-arrow-left"></i> Retour
@@ -3955,6 +4189,345 @@
         // affichee longtemps, ce qui est justement le cas quand on deborde.
         setInterval(majEcartHoraire, 20000);
 
+
+        // ==================== REPERES DANS LE TEXTE ====================
+        // Deux sortes de reperes, melanges dans la meme barre et ranges dans
+        // l'ordre du texte : les intitules venus de la feuille (une ligne CSV
+        // par invite) et les marqueurs poses au doigt pendant la preparation.
+        let modeRepere = false;
+        const positionsDeRetour = {};   // zone -> scrollTop d'avant le saut
+
+        // Un repere est range par sa place dans la fiche, pas par son texte :
+        // une meme phrase revient souvent d'un invite a l'autre, et marquer
+        // « l'anecdote » chez l'un marquait les huit autres.
+        function cleDeLigne(bloc, ligne) {
+            return `${bloc}:${ligne}`;
+        }
+
+        function texteDeLigne(texte) {
+            return (texte || '').trim().slice(0, 60);
+        }
+
+        function etiquette(texte, taille = 28) {
+            const propre = (texte || '').trim().replace(/\s+/g, ' ');
+            return propre.length > taille ? propre.slice(0, taille - 1) + '…' : propre;
+        }
+
+        // Construit le contenu ligne par ligne et renvoie la liste des reperes
+        // dans l'ordre d'apparition. textContent partout : le texte vient de la
+        // feuille et ne doit jamais etre interprete comme du HTML.
+        function construireContenu(zone, seq) {
+            zone.textContent = '';
+            const reperes = [];
+            const poses = (seq.reperes || []);
+            const parPlace = new Map(poses.map(r => [r.cle, r]));
+            const servis = new Set();
+
+            // Premiere passe : on fabrique les lignes et on note leur place.
+            const lignes = [];
+            (seq.questions || []).forEach((q, bloc) => {
+                if (q.text) {
+                    const titre = document.createElement('div');
+                    titre.className = 'bloc-titre ligne-texte';
+                    titre.textContent = q.text;
+                    titre.dataset.cle = cleDeLigne(bloc, 'titre');
+                    titre.dataset.texte = texteDeLigne(q.text);
+                    zone.appendChild(titre);
+                    lignes.push({ el: titre, auto: true });
+                }
+                String(q.content || '').split('\n').forEach((ligne, rang) => {
+                    const el = document.createElement('div');
+                    el.className = 'ligne-texte' + (ligne.trim() ? '' : ' vide');
+                    el.textContent = ligne;
+                    if (ligne.trim()) {
+                        el.dataset.cle = cleDeLigne(bloc, rang);
+                        el.dataset.texte = texteDeLigne(ligne);
+                        lignes.push({ el, auto: false });
+                    }
+                    zone.appendChild(el);
+                });
+                const espace = document.createElement('div');
+                espace.className = 'ligne-texte vide';
+                zone.appendChild(espace);
+            });
+
+            // Deuxieme passe : on place les marqueurs. La place fait foi, a
+            // condition que le texte n'ait pas change dessous ; sinon on
+            // rattrape la ligne par son texte, ce qui sauve les reperes quand
+            // la feuille a bouge de quelques lignes.
+            lignes.forEach(({ el }) => {
+                const r = parPlace.get(el.dataset.cle);
+                if (r && (!r.texte || r.texte === el.dataset.texte)) {
+                    el.classList.add('marquee');
+                    servis.add(r.cle);
+                }
+            });
+            poses.forEach(r => {
+                if (servis.has(r.cle) || !r.texte) return;
+                const retrouvee = lignes.find(({ el }) =>
+                    el.dataset.texte === r.texte && !el.classList.contains('marquee'));
+                if (retrouvee) { retrouvee.el.classList.add('marquee'); servis.add(r.cle); }
+            });
+
+            // Troisieme passe : la liste, dans l'ordre du texte.
+            lignes.forEach(({ el, auto }) => {
+                if (auto) reperes.push({ label: etiquette(el.textContent), el, manuel: false });
+                else if (el.classList.contains('marquee'))
+                    reperes.push({ label: etiquette(el.textContent), el, manuel: true });
+            });
+            return reperes;
+        }
+
+        function construireBarreReperes(barre, zone, reperes) {
+            barre.textContent = '';
+            // Un seul repere ne fait pas gagner de temps : la barre ne s'affiche
+            // qu'a partir de deux endroits a atteindre.
+            if (reperes.length < 2) { barre.style.display = 'none'; return; }
+            barre.style.display = 'flex';
+            reperes.forEach(r => {
+                const puce = document.createElement('button');
+                puce.className = 'puce-repere' + (r.manuel ? ' manuel' : '');
+                if (r.manuel) {
+                    const icone = document.createElement('i');
+                    icone.className = 'fas fa-bookmark';
+                    puce.appendChild(icone);
+                }
+                const texte = document.createElement('span');
+                texte.textContent = r.label;
+                puce.appendChild(texte);
+                puce.onclick = () => sauterVers(zone, r.el);
+                barre.appendChild(puce);
+            });
+        }
+
+        function boutonRetour(zone) {
+            return document.getElementById(zone.id === 'popupContent' ? 'btnRetourPopup' : 'btnRetourLecture');
+        }
+
+        function sauterVers(zone, el) {
+            positionsDeRetour[zone.id] = zone.scrollTop;
+            zone.scrollTop = Math.max(0, el.offsetTop - 8);
+            const retour = boutonRetour(zone);
+            if (retour) retour.style.display = '';
+            majIndicateurSuite();
+        }
+
+        window.revenirOuJetais = (zoneId) => {
+            const zone = document.getElementById(zoneId);
+            if (!zone) return;
+            zone.scrollTop = positionsDeRetour[zoneId] || 0;
+            const retour = boutonRetour(zone);
+            if (retour) retour.style.display = 'none';
+            majIndicateurSuite();
+        };
+
+        window.basculerModeRepere = () => {
+            modeRepere = !modeRepere;
+            appliquerModeRepere();
+            showToast(modeRepere
+                ? 'Touchez une ligne pour y poser un repère'
+                : 'Pose de repères terminée');
+        };
+
+        function appliquerModeRepere() {
+            ['contentText', 'popupContent'].forEach(id => {
+                const zone = document.getElementById(id);
+                if (zone) zone.classList.toggle('mode-repere', modeRepere);
+            });
+            const bouton = document.getElementById('repereBtn');
+            if (bouton) bouton.classList.toggle('actif', modeRepere);
+        }
+
+        async function basculerRepere(cle, texte, label) {
+            const seq = currentEvent?.sequences?.[currentSequenceIndex];
+            if (!seq) return;
+            seq.reperes = seq.reperes || [];
+            const dedans = seq.reperes.findIndex(r => r.cle === cle);
+            if (dedans >= 0) seq.reperes.splice(dedans, 1);
+            else seq.reperes.push({ cle, texte, label });
+
+            renderCurrentSequence();
+            if (document.getElementById('popupOverlay').classList.contains('active')) remplirPopup();
+            appliquerModeRepere();
+            showToast(dedans >= 0 ? 'Repère retiré' : 'Repère posé');
+
+            try {
+                await updateDoc(doc(db, "events", currentEvent.id, "sequences", seq.id),
+                    { reperes: seq.reperes });
+            } catch (e) {
+                console.error('repere :', e);
+                showToast('Repère non enregistré : ' + (e.code || e.message));
+            }
+        }
+
+        // Un seul ecouteur par zone, pose une fois : les lignes sont recreees a
+        // chaque rendu, leur en attacher un chacune fuirait.
+        ['contentText', 'popupContent'].forEach(id => {
+            document.addEventListener('click', (ev) => {
+                if (!modeRepere) return;
+                const zone = document.getElementById(id);
+                if (!zone) return;
+                const ligne = ev.target.closest('.ligne-texte');
+                if (!ligne || !zone.contains(ligne) || !ligne.dataset.cle) return;
+                basculerRepere(ligne.dataset.cle, ligne.dataset.texte, etiquette(ligne.textContent));
+            });
+        });
+
+        // ==================== HORLOGE ET MINUTEUR ====================
+        // Le minuteur est attache a une sequence, pas a l'ecran : il continue
+        // de decompter pendant que l'animateur va chercher une information
+        // ailleurs, et survit a une mise en veille parce qu'on ne retient que
+        // l'heure de depart, jamais un compteur qu'il faudrait entretenir.
+        const CLE_MINUTEUR = 'mcnote.minuteur';
+        const DUREE_PAR_DEFAUT = 15;     // minutes, quand la feuille ne dit rien
+        let minuteur = null;             // { evenementId, seqId, titre, debut, duree }
+        let dureeReglee = null;          // reglage avant depart, pour la sequence affichee
+
+        try {
+            minuteur = JSON.parse(localStorage.getItem(CLE_MINUTEUR) || 'null');
+        } catch (e) { minuteur = null; }
+
+        function retenirMinuteur() {
+            try {
+                if (minuteur) localStorage.setItem(CLE_MINUTEUR, JSON.stringify(minuteur));
+                else localStorage.removeItem(CLE_MINUTEUR);
+            } catch (e) { /* sans gravite : le minuteur reste en memoire */ }
+        }
+
+        // Duree prevue : l'ecart avec l'horaire de la sequence suivante. Aucune
+        // colonne a remplir, les feuilles existantes suffisent.
+        function dureePrevue(index) {
+            const seqs = currentEvent?.sequences || [];
+            const debut = minutesDeLHoraire(seqs[index]?.timing);
+            if (debut === null) return null;
+            for (let i = index + 1; i < seqs.length; i++) {
+                const suivant = minutesDeLHoraire(seqs[i].timing);
+                if (suivant === null) continue;
+                const ecart = suivant - debut;
+                // Au-dela de six heures on a change de jour ; en dessous d'une
+                // minute la feuille range deux fiches au meme horaire.
+                if (ecart >= 1 && ecart <= 360) return ecart;
+                return null;
+            }
+            return null;
+        }
+
+        function dureeAffichee() {
+            if (dureeReglee !== null) return dureeReglee;
+            return dureePrevue(currentSequenceIndex) ?? DUREE_PAR_DEFAUT;
+        }
+
+        function enMinutesSecondes(secondes) {
+            const signe = secondes < 0 ? '+' : '';
+            const absolu = Math.abs(secondes);
+            const m = Math.floor(absolu / 60), sec = absolu % 60;
+            return `${signe}${m}:${String(sec).padStart(2, '0')}`;
+        }
+
+        function secondesRestantes() {
+            if (!minuteur) return null;
+            return Math.round(minuteur.duree * 60 - (Date.now() - minuteur.debut) / 1000);
+        }
+
+        function majMinuteur() {
+            const horloge = document.getElementById('horloge');
+            if (!horloge) return;
+            const now = new Date();
+            horloge.textContent = now.toLocaleTimeString('fr-FR', { hour12: false });
+
+            const champ = document.getElementById('compteARebours');
+            const cible = document.getElementById('minuteurCible');
+            const marche = document.getElementById('minuteurMarche');
+            const texte = document.getElementById('minuteurMarcheTexte');
+            const raz = document.getElementById('minuteurRaz');
+            const rappel = document.getElementById('minuteurPopup');
+
+            const actif = minuteur && minuteur.evenementId === currentEvent?.id;
+            const reste = actif ? secondesRestantes() : null;
+
+            champ.className = 'compte-a-rebours';
+            if (!actif) {
+                champ.classList.add('arret');
+                champ.textContent = `${dureeAffichee()} min prévues`;
+                cible.textContent = '';
+                marche.classList.remove('en-cours');
+                marche.innerHTML = '<i class="fas fa-play"></i> <span id="minuteurMarcheTexte">Démarrer</span>';
+                raz.style.display = 'none';
+                if (rappel) rappel.style.display = 'none';
+                return;
+            }
+
+            champ.textContent = enMinutesSecondes(reste);
+            if (reste <= 0) champ.classList.add('depasse');
+            else if (reste <= 300) champ.classList.add('bientot');
+
+            // On ne nomme la sequence chronometree que si ce n'est pas celle
+            // qu'on regarde : sinon c'est du bruit.
+            // Une sequence ajoutee sur place n'a pas encore d'identifiant :
+            // on se rabat alors sur son rang, sinon deux « sans id » seraient
+            // prises pour la meme et le rappel disparaitrait a tort.
+            const seqAffichee = currentEvent?.sequences?.[currentSequenceIndex];
+            const memeSequence = minuteur.seqId
+                ? seqAffichee?.id === minuteur.seqId
+                : currentSequenceIndex === minuteur.seqIndex;
+            cible.textContent = memeSequence ? '' : `⏱ ${minuteur.titre}`;
+
+            marche.classList.add('en-cours');
+            marche.innerHTML = '<i class="fas fa-pause"></i> <span>Arrêter</span>';
+            raz.style.display = '';
+
+            if (rappel) {
+                rappel.style.display = '';
+                rappel.className = 'rappel-minuteur' + (reste <= 0 ? ' depasse' : reste <= 300 ? ' bientot' : '');
+                rappel.textContent = enMinutesSecondes(reste);
+            }
+        }
+
+        window.basculerMinuteur = () => {
+            if (minuteur && minuteur.evenementId === currentEvent?.id) {
+                minuteur = null;
+                retenirMinuteur();
+                showToast('Minuteur arrêté');
+            } else {
+                const seq = currentEvent?.sequences?.[currentSequenceIndex];
+                if (!seq) return;
+                minuteur = {
+                    evenementId: currentEvent.id,
+                    seqId: seq.id || null,
+                    seqIndex: currentSequenceIndex,
+                    titre: seq.title || 'Séquence',
+                    debut: Date.now(),
+                    duree: dureeAffichee()
+                };
+                dureeReglee = null;
+                retenirMinuteur();
+                showToast(`Minuteur lancé : ${minuteur.duree} min`);
+            }
+            majMinuteur();
+        };
+
+        window.remettreMinuteur = () => {
+            if (!minuteur) return;
+            minuteur.debut = Date.now();
+            retenirMinuteur();
+            majMinuteur();
+            showToast('Minuteur remis à zéro');
+        };
+
+        // Regler avant ou pendant : la regie change d'avis, le minuteur suit.
+        window.reglerMinuteur = (delta) => {
+            if (minuteur && minuteur.evenementId === currentEvent?.id) {
+                minuteur.duree = Math.max(1, minuteur.duree + delta);
+                retenirMinuteur();
+            } else {
+                dureeReglee = Math.max(1, dureeAffichee() + delta);
+            }
+            majMinuteur();
+        };
+
+        setInterval(majMinuteur, 1000);
+
+
         // ==================== RECHERCHE ====================
         // Cherche dans tout ce qui est saisi : horaire, titre, intervenants,
         // scene, questions et note rapide. Sans accents ni casse, parce que
@@ -4425,15 +4998,16 @@
             majBandeauScene();
             majEcartHoraire();
             majBoutonLogistique();
+            dureeReglee = null;
+            majMinuteur();
             afficherBoutonMiseAJour();
 
-            let content = '';
-            (seq.questions || []).forEach(q => {
-                if (q.text) content += q.text + '\n\n';
-                if (q.content) content += q.content + '\n\n';
-            });
-            document.getElementById('contentText').textContent = content.trim();
-            document.getElementById('contentText').scrollTop = 0;
+            const zoneTexte = document.getElementById('contentText');
+            const reperes = construireContenu(zoneTexte, seq);
+            construireBarreReperes(document.getElementById('barreReperes'), zoneTexte, reperes);
+            zoneTexte.scrollTop = 0;
+            document.getElementById('btnRetourLecture').style.display = 'none';
+            appliquerModeRepere();
             majIndicateurSuite();
             document.getElementById('quickNoteInput').value = seq.note || '';
             majBoutonEffacerNote();
@@ -4840,14 +5414,12 @@ Rappel sécurité,"En cas d'évacuation, les sorties de secours sont situées à
             const titre = document.getElementById('popupTitle');
             titre.textContent = `${seq.timing || '--:--'} · ${seq.title || '--'}`;
 
-            let content = '';
-            (seq.questions || []).forEach(q => {
-                if (q.text) content += q.text + '\n\n';
-                if (q.content) content += q.content + '\n\n';
-            });
             const zone = document.getElementById('popupContent');
-            zone.textContent = content.trim();
+            const reperes = construireContenu(zone, seq);
+            construireBarreReperes(document.getElementById('barreReperesPopup'), zone, reperes);
             zone.scrollTop = 0;   // on repart en haut de la nouvelle sequence
+            document.getElementById('btnRetourPopup').style.display = 'none';
+            appliquerModeRepere();
 
             const total = currentEvent?.sequences?.length || 0;
             const griser = (bouton, inactif) => {

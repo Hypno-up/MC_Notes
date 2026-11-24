@@ -115,6 +115,29 @@ Le cœur de l'app : **une séquence par écran, aucun scroll**.
   « 20 min d'avance » ou « +12 min ». Elle se rafraîchit toute seule, et se tait
   au-delà de six heures d'écart : on regarde alors un autre jour ou une fiche
   d'information horodatée `00:0x`, où l'écart n'aurait aucun sens
+- **Horloge et minuteur** — sous l'horaire, une horloge à la seconde et un
+  compte à rebours. La durée est **déduite de l'horaire de la séquence
+  suivante** (15:00 puis 15:50 → 50 minutes) : aucune colonne à remplir, les
+  feuilles existantes suffisent. Les boutons **−5 / +5** rallongent ou
+  raccourcissent avant comme pendant, quand la régie change d'avis. Le minuteur
+  appartient à **une séquence, pas à l'écran** : il continue de décompter
+  pendant que l'animateur va chercher une information ailleurs, et nomme alors
+  la séquence chronométrée (« ⏱ Table ronde ») pour qu'on sache ce qu'on
+  décompte. Seule l'heure de départ est retenue, jamais un compteur : une mise
+  en veille ou un redémarrage de l'app ne lui font rien. Passé l'échéance il
+  compte en positif et en rouge (« +3:20 »), et un rappel apparaît dans la
+  lecture plein écran
+- **Repères dans le texte** — une barre de pastilles au-dessus du contenu mène
+  directement à un endroit précis de la fiche, et un bouton **Retour** ramène
+  exactement là où on lisait. Deux sources, mélangées dans l'ordre du texte :
+  les **intitulés venus de la feuille** (chaque `question_text` devient un
+  repère — une table ronde à huit invités se parcourt sans jamais remonter), et
+  les **marqueurs posés au doigt** avec le bouton signet, en touchant une ligne
+  pendant la préparation. Un marqueur est rangé par sa **place** dans la fiche,
+  pas par son texte : une même phrase revenant chez les huit invités ne marque
+  plus que la ligne choisie. Si la feuille bouge, il est rattrapé par son texte.
+  La barre ne s'affiche qu'à partir de deux repères, et sert aussi en lecture
+  plein écran
 - **Recherche** (loupe, barre du haut) — porte sur l'horaire, le titre, les
   intervenants, la scène, les questions et la note rapide. Insensible aux accents
   et à la casse : « patisserie » trouve « Pâtisserie ». Les résultats s'affichent
